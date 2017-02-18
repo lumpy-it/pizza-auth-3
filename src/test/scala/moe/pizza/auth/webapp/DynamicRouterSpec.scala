@@ -149,7 +149,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), None)))
+        new HydratedSession(List.empty[Alert], None, Some(p), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -235,7 +235,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), Some(signupData))))
+        new HydratedSession(List.empty[Alert], None, Some(p), Some(signupData))))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -320,7 +320,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), Some(signupData))))
+        new HydratedSession(List.empty[Alert], None, Some(p), Some(signupData))))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -413,7 +413,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), Some(signupData))))
+        new HydratedSession(List.empty[Alert], None, Some(p), Some(signupData))))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -508,7 +508,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), Some(signupData))))
+        new HydratedSession(List.empty[Alert], None, Some(p), Some(signupData))))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -541,15 +541,15 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
       verifyR
     })
     val p = new Pilot(null,
-                      null,
-                      null,
-                      null,
-                      null,
-                      null,
-                      null,
-                      List("admin"),
-                      null,
-                      null)
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      List("admin"),
+      null,
+      null)
     when(ud.getUser("bob_mcbobface")).thenReturn(Some(p))
 
     val app = new Webapp(config,
@@ -568,7 +568,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), None)))
+        new HydratedSession(List.empty[Alert], None, Some(p), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -629,7 +629,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), None)))
+        new HydratedSession(List.empty[Alert], None, Some(p), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -637,6 +637,69 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val session = resp.getSession
     session.get.alerts.head.content must equal(
       "Unable to find a user associated with that EVE character, please sign up or use another character")
+  }
+  "DynamicRouter" should "accept a redirect back from CREST to log in and redirect back" in {
+    val config = mock[ConfigFile]
+    val authconfig = mock[AuthConfig]
+    val ud = mock[UserDatabase]
+    val pg = mock[PilotGrader]
+    val crest = mock[CrestApi]
+    val db = mock[EveMapDb]
+    when(config.auth).thenReturn(authconfig)
+    when(crest.redirect("login", Webapp.defaultCrestScopes))
+      .thenReturn("http://login.eveonline.com/whatever2")
+    when(crest.callback("codegoeshere")).thenReturn(Task {
+      CallbackResponse("access_token", "bearer", 1000, Some("refresh_token"))
+    })
+    val verifyR = VerifyResponse(103,
+      "bob mcbobface",
+      "some time",
+      "scopes",
+      "token type",
+      "owner hash",
+      "eve online")
+    when(crest.verify("access_token")).thenReturn(Task {
+      verifyR
+    })
+    val p = new Pilot(null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      List("admin"),
+      null,
+      null)
+    when(ud.getUser("bob_mcbobface")).thenReturn(Some(p))
+
+    val app = new Webapp(config,
+      pg,
+      9021,
+      ud,
+      crestapi = Some(crest),
+      mapper = Some(db),
+	  apiClient = Some(client))
+
+    val req = Request(
+      uri = Uri
+        .uri("/callback")
+        .withQueryParam("code", "codegoeshere")
+        .withQueryParam("state", "login"))
+    val reqwithsession = req.copy(
+      attributes = req.attributes.put(
+        SessionManager.HYDRATEDSESSION,
+        new HydratedSession(List.empty[Alert], Some("/groups"), None, None)))
+    val res = app.dynamicWebRouter(reqwithsession)
+
+    val resp = res.run
+    resp.status must equal(Status.TemporaryRedirect)
+    val session = resp.getSession
+    verify(ud).getUser("bob_mcbobface")
+    session.get.alerts.head.content must equal(
+      "Thanks for logging in bob mcbobface")
+    val location = resp.headers.get(CaseInsensitiveString("location")).get.value
+    location must equal("/groups")
   }
   "DynamicRouter" should "update a pilot if I'm in the right groups" in {
     val config = mock[ConfigFile]
@@ -677,7 +740,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), None)))
+        new HydratedSession(List.empty[Alert], None, Some(p), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -708,7 +771,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes =
         req.attributes.put(SessionManager.HYDRATEDSESSION,
-                           new HydratedSession(List.empty[Alert], None, None)))
+                           new HydratedSession(List.empty[Alert], None, None, None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -757,7 +820,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), None)))
+        new HydratedSession(List.empty[Alert], None, Some(p), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -804,7 +867,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -849,7 +912,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -909,7 +972,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -968,7 +1031,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1033,7 +1096,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1100,7 +1163,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1146,7 +1209,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1199,7 +1262,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1247,7 +1310,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1295,7 +1358,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1339,7 +1402,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1384,7 +1447,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1432,7 +1495,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1479,7 +1542,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1528,7 +1591,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
     val resp = res.run
     resp.getSession.get.alerts.head.content must equal(
@@ -1539,7 +1602,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession2 = req2.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res2 = app.dynamicWebRouter(reqwithsession2)
     val resp2 = res2.run
     resp2.getSession.get.alerts.head.content must equal(
@@ -1550,7 +1613,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession3 = req3.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res3 = app.dynamicWebRouter(reqwithsession3)
     val resp3 = res3.run
     resp3.getSession.get.alerts.head.content must equal("Can't find that user")
@@ -1560,7 +1623,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession4 = req4.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res4 = app.dynamicWebRouter(reqwithsession4)
     val resp4 = res4.run
     resp4.getSession.get.alerts.head.content must equal("Can't find that user")
@@ -1620,7 +1683,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), None)))
+        new HydratedSession(List.empty[Alert], None, Some(p), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1678,7 +1741,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(bob), None)))
+        new HydratedSession(List.empty[Alert], None, Some(bob), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1755,7 +1818,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
       val reqwithsession = req.copy(
         attributes = req.attributes.put(
           SessionManager.HYDRATEDSESSION,
-          new HydratedSession(List.empty[Alert], Some(p), None)))
+          new HydratedSession(List.empty[Alert], None, Some(p), None)))
       val res = app.dynamicWebRouter(reqwithsession)
 
       val resp = res.run
@@ -1849,7 +1912,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), None)))
+        new HydratedSession(List.empty[Alert], None, Some(p), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1921,7 +1984,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val reqwithsession = req.copy(
       attributes = req.attributes.put(
         SessionManager.HYDRATEDSESSION,
-        new HydratedSession(List.empty[Alert], Some(p), None)))
+        new HydratedSession(List.empty[Alert], None, Some(p), None)))
     val res = app.dynamicWebRouter(reqwithsession)
 
     val resp = res.run
@@ -1998,6 +2061,100 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
       .status must equal(Status.SeeOther)
     app
       .dynamicWebRouter(Request(uri = Uri.uri("/logout")))
+      .run
+      .status must equal(Status.TemporaryRedirect)
+  }
+  "DynamicRouter's routes which require logging in" should "redirect back to /" in {
+    val config = mock[ConfigFile]
+    val authconfig = mock[AuthConfig]
+    val ud = mock[UserDatabase]
+    val pg = mock[PilotGrader]
+    val crest = mock[CrestApi]
+    val db = mock[EveMapDb]
+    val update = mock[Update]
+    when(config.auth).thenReturn(authconfig)
+
+    val app = new Webapp(config,
+      pg,
+      9021,
+      ud,
+      crestapi = Some(crest),
+      mapper = Some(db),
+      updater = Some(update))
+
+    app
+      .dynamicWebRouter(Request(uri = Uri.uri("/signup/confirm"))
+        .withAttribute(SessionManager.HYDRATEDSESSION,
+          new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.TemporaryRedirect)
+    app
+      .dynamicWebRouter(Request(uri = Uri.uri("/groups"))
+        .withAttribute(SessionManager.HYDRATEDSESSION,
+          new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.TemporaryRedirect)
+    app
+      .dynamicWebRouter(Request(uri = Uri.uri("/groups/admin"))
+        .withAttribute(SessionManager.HYDRATEDSESSION,
+          new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.TemporaryRedirect)
+    app
+      .dynamicWebRouter(Request(uri = Uri.uri("/ping"))
+        .withAttribute(SessionManager.HYDRATEDSESSION,
+          new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.TemporaryRedirect)
+    app
+      .dynamicWebRouter(Request(uri = Uri.uri("/account"))
+        .withAttribute(SessionManager.HYDRATEDSESSION,
+          new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.TemporaryRedirect)
+    app
+      .dynamicWebRouter(
+        Request(uri = Uri.uri("/groups/admin/approve/foo/bar"))
+          .withAttribute(SessionManager.HYDRATEDSESSION,
+            new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.TemporaryRedirect)
+    app
+      .dynamicWebRouter(Request(uri = Uri.uri("/groups/admin/deny/foo/bar"))
+        .withAttribute(SessionManager.HYDRATEDSESSION,
+          new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.TemporaryRedirect)
+    app
+      .dynamicWebRouter(Request(uri = Uri.uri("/groups/apply/thing"))
+        .withAttribute(SessionManager.HYDRATEDSESSION,
+          new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.TemporaryRedirect)
+    app
+      .dynamicWebRouter(Request(uri = Uri.uri("/groups/apply/thing"))
+        .withAttribute(SessionManager.HYDRATEDSESSION,
+          new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.TemporaryRedirect)
+    app
+      .dynamicWebRouter(
+        Request(method = Method.POST, uri = Uri.uri("/ping/global"))
+          .withAttribute(SessionManager.HYDRATEDSESSION,
+            new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.SeeOther)
+    app
+      .dynamicWebRouter(
+        Request(method = Method.POST, uri = Uri.uri("/ping/group"))
+          .withAttribute(SessionManager.HYDRATEDSESSION,
+            new HydratedSession(List.empty[Alert], None, None, None)))
+      .run
+      .status must equal(Status.SeeOther)
+    app
+      .dynamicWebRouter(Request(uri = Uri.uri("/logout"))
+        .withAttribute(SessionManager.HYDRATEDSESSION,
+          new HydratedSession(List.empty[Alert], None, None, None)))
       .run
       .status must equal(Status.TemporaryRedirect)
   }
