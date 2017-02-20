@@ -16,8 +16,6 @@ import org.http4s.dsl.{Root, _}
 import org.http4s.server._
 import org.http4s.server.staticcontent.ResourceService
 import org.http4s.server.syntax.ServiceOps
-
-
 import org.joda.time.DateTime
 import play.twirl.api.Html
 import moe.pizza.eveapi._
@@ -40,6 +38,7 @@ import org.slf4j.LoggerFactory
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
+import moe.pizza.auth.bots.DiscordBot
 import moe.pizza.auth.webapp.oauth.OAuthResource
 import moe.pizza.auth.webapp.rest.{RestKeyMiddleware, RestResource}
 import org.http4s.circe._
@@ -89,6 +88,8 @@ class Webapp(fullconfig: ConfigFile,
 
   val update = updater.getOrElse(new Update(crest, eveapi, graders))
 
+  val discordBot = new DiscordBot(fullconfig.discord)
+
   // used for serializing JSON responses, for now
   val OM = new ObjectMapper()
   OM.registerModules(DefaultScalaModule)
@@ -129,10 +130,17 @@ class Webapp(fullconfig: ConfigFile,
         case Some(s) =>
           s.pilot match {
             case Some(pilot) =>
+              val discordId = pilot.metadata.get("discordId") match {
+                case null => None
+                case s => Some(s.asText)
+               }
               Ok(
                 templates.html.base(
                   "pizza-auth-3",
-                  templates.html.main(pilot, getJabberServer(pilot)),
+                  templates.html.main(
+                    pilot,
+                    discordId,
+                    discordBot.getAuthorisationUrl().toString()),
                   req.getSession.map(_.toNormalSession),
                   req.getSession.flatMap(_.pilot)
                 )
@@ -814,6 +822,23 @@ class Webapp(fullconfig: ConfigFile,
           }
         case None =>
           TemporaryRedirect(Uri(path = "/"))
+      }
+    }
+
+    case req @ GET -> Root / "discord" / "callback" => {
+      req.getSession.map(_.updatePilot).flatMap(_.pilot) match {
+        case Some(p) =>
+          (req.params.get("code"), req.params.get("error")) match {
+            case (Some(a), None) =>
+              println(a)
+            case (None, Some(err)) =>
+              println(err)
+            case (_,_) =>
+              println("what")
+          }
+          Ok()
+        case None =>
+          BadRequest()
       }
     }
 

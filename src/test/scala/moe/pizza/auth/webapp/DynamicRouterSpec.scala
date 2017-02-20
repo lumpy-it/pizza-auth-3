@@ -1,6 +1,6 @@
 package moe.pizza.auth.webapp
 
-import moe.pizza.auth.config.ConfigFile.{AuthConfig, AuthGroupConfig, ConfigFile}
+import moe.pizza.auth.config.ConfigFile._
 import moe.pizza.auth.ldap.server.EmbeddedLdapServer
 import moe.pizza.auth.ldap.client.LdapClient
 import moe.pizza.auth.ldap.client.LdapClient._
@@ -784,12 +784,14 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
   "DynamicRouter" should "render the main page" in {
     val config = mock[ConfigFile]
     val authconfig = mock[AuthConfig]
+    val discordconfig = DiscordConfig("abc","secret","url","token")
     val ud = mock[UserDatabase]
     val pg = mock[PilotGrader]
     val crest = mock[CrestApi]
     val db = mock[EveMapDb]
     val update = mock[Update]
     when(config.auth).thenReturn(authconfig)
+    when(config.discord).thenReturn(discordconfig)
     when(crest.redirect("login", Webapp.defaultCrestScopes))
       .thenReturn("http://login.eveonline.com/whatever")
 
@@ -812,7 +814,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
                       null,
                       "Bob McName",
                       null,
-                      null,
+                      Pilot.OM.createObjectNode(),
                       List("admin"),
                       null,
                       null)
@@ -829,6 +831,59 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     // should show the currently logged in user, and a logout button
     assert(bodytxt contains "/logout")
     assert(bodytxt contains "Bob McName")
+    assert(bodytxt contains "Discord")
+    assert(bodytxt contains "join the discord")
+  }
+  "DynamicRouter's main page" should "look differently with discord user" in {
+    val config = mock[ConfigFile]
+    val authconfig = mock[AuthConfig]
+    val discordconfig = DiscordConfig("abc","secret","url","token")
+    val ud = mock[UserDatabase]
+    val pg = mock[PilotGrader]
+    val crest = mock[CrestApi]
+    val db = mock[EveMapDb]
+    val update = mock[Update]
+    when(config.auth).thenReturn(authconfig)
+    when(config.discord).thenReturn(discordconfig)
+
+    val app = new Webapp(config,
+      pg,
+      9021,
+      ud,
+      crestapi = Some(crest),
+      mapper = Some(db),
+      updater = Some(update))
+
+    val bob =
+      new Pilot("bob", null, null, null, null, null, null, null, null, null)
+
+    when(ud.getUser("bob")).thenReturn(Some(bob))
+
+    val p = new Pilot("bob",
+      null,
+      null,
+      null,
+      "Bob McName",
+      null,
+      Pilot.OM.readTree("{\"discordId\":\"imcool\"}"),
+      List("admin"),
+      null,
+      null)
+    val req = Request(uri = Uri.uri("/"))
+    val reqwithsession = req.copy(
+      attributes = req.attributes.put(
+        SessionManager.HYDRATEDSESSION,
+        new HydratedSession(List.empty[Alert], None, Some(p), None)))
+    val res = app.dynamicWebRouter(reqwithsession)
+
+    val resp = res.run
+    resp.status must equal(Status.Ok)
+    val bodytxt = EntityDecoder.decodeString(resp)(Charset.`UTF-8`).run
+    // should show the currently logged in user, and a logout button
+    assert(bodytxt contains "/logout")
+    assert(bodytxt contains "Bob McName")
+    assert(bodytxt contains "DiscordID")
+    assert(bodytxt contains "imcool")
   }
   "DynamicRouter's ping page" should "turn users away without the ping group" in {
     val config = mock[ConfigFile]

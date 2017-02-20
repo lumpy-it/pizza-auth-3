@@ -1,19 +1,15 @@
-@(pilot: moe.pizza.auth.models.Pilot, server: String)
+@(pilot: moe.pizza.auth.models.Pilot, discordId: Option[String], discordUrl: String)
 
 <div class="row well form-inline custom-form">
-    <h3>Jabber</h3>
-    <table class="table">
-        <tr>
-            <td>Server</td>
-            <td>@{server}</td>
-        </tr>
-        <tr>
-            <td>Username</td>
-            <td>@{pilot.uid}</td>
-        </tr>
-        <tr>
-            <td>jabber ID</td>
-            <td>@{pilot.uid}@@@{server}</td>
-        </tr>
-    </table>
+    <h3>Discord</h3>
+    @if(discordId.isDefined) {
+        <table class="table">
+            <tr>
+                <td>DiscordID</td>
+                <td>@{discordId.get}</td>
+            </tr>
+        </table>
+    } else {
+        <a href="@(discordUrl)">Click here to join the discord server</a>
+    }
 </div>

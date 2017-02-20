@@ -13,10 +13,6 @@ import moe.pizza.auth.webapp.oauth.OAuthApplication
   * Created by andi on 19/02/16.
   */
 object ConfigFile {
-  case class PingBotConfig(
-      host: String,
-      password: String
-  )
   case class EmbeddedLdapConfig(
       instancePath: String = "./ldap",
       port: Int = 389,
@@ -36,7 +32,6 @@ object ConfigFile {
       groupShortName: String,
       groups: AuthGroupConfig,
       graders: List[JsonNode],
-      pingbot: Option[PingBotConfig],
       restkeys: List[String],
       applications: List[OAuthApplication] = List()
   ) {
@@ -53,9 +48,16 @@ object ConfigFile {
       secretKey: String,
       redirectUrl: String
   )
+  case class DiscordConfig(
+          clientId: String,
+          clientSecret: String,
+          redirectUrl: String,
+          botToken: String
+  )
   case class ConfigFile(
       crest: CrestConfig,
       auth: AuthConfig,
+      discord: DiscordConfig,
       embeddedldap: EmbeddedLdapConfig
   )
 

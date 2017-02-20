@@ -69,6 +69,15 @@
         callback: "localhost"
 
   #############################################################################
+  ## discord plugin settings
+  #############################################################################
+  discord:
+    clientId: "123"
+    clientSecret: "secrethere"
+    redirectUrl: "http://localhost:9021/discord/callback"
+    botToken: "tokenhere"
+
+  #############################################################################
   ## embedded ldap settings
   #############################################################################
   embeddedldap:
