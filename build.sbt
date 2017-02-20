@@ -4,6 +4,8 @@ version := "1.0"
 
 scalaVersion := "2.11.7"
 
+resolvers += "jitpack" at "https://jitpack.io"
+
 resolvers += Resolver.jcenterRepo
 
 fork := true
@@ -22,6 +24,7 @@ libraryDependencies ++= Seq(
   "org.http4s"                       %% "http4s-twirl"              % HTTP4S_VERSION,
   "org.http4s"                       %% "http4s-json4s"             % HTTP4S_VERSION,
   // supporting libraries
+  "com.github.austinv11"             % "Discord4J"                  % "2.7.0",
   "moe.pizza"                        %% "eveapi"                    % "0.56",
   "org.log4s"                        %% "log4s"                     % "1.2.0",
   "com.github.scopt"                 %% "scopt"                     % "3.3.0",
