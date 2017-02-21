@@ -14,10 +14,13 @@ import io.circe.syntax._
 import io.circe.generic.auto._
 import moe.pizza.auth.interfaces.UserDatabase
 import org.http4s.headers.Authorization
-import org.http4s.MediaType._
-import org.http4s.headers.`Content-Type`
 import sx.blah.discord.api.ClientBuilder
+import sx.blah.discord.api.events.{Event, IListener}
+import sx.blah.discord.handle.impl.events.ReadyEvent
+import sx.blah.discord.handle.obj.IGuild
+
 import scalaz.concurrent.Task
+import scala.collection.JavaConverters._
 
 /**
   * Created by Kalu on 20/02/2017.
@@ -91,10 +94,38 @@ class DiscordAPI(config: DiscordConfig)(implicit client:Client) {
   }
 }
 
-class DiscordBot(config: DiscordConfig, ud: UserDatabase, dapi: Option[DiscordAPI] = None)(implicit client: Client) {
+class DiscordBot(
+                  config: DiscordConfig,
+                  ud: UserDatabase,
+                  dapi: Option[DiscordAPI] = None)
+                (implicit client: Client) extends IListener[Event]{
 
-  //val discordClient = new ClientBuilder().withToken(config.botToken).build()
+  val discordClient = new ClientBuilder().withToken(config.botToken).build()
   val discordAPI = dapi.getOrElse(new DiscordAPI(config))
+  var guild : Option[IGuild] = None
+
+  def connect(): Unit = {
+    discordClient.getDispatcher.registerListener(this)
+    discordClient.login()
+  }
+
+  override def handle(t: Event): Unit = {
+    t match {
+      case e: ReadyEvent =>
+        guild = Some(discordClient.getGuildByID(config.guildId))
+        println("DiscordBot: Saved Discord Guild Handle")
+      case _ =>
+    }
+  }
+
+  def getRoles(): List[(String, String)] = {
+    guild match {
+      case Some(g) =>
+        g.getRoles().asScala.toList.map((role) => (role.getName(), role.getID()))
+      case None =>
+        List()
+    }
+  }
 
   def getAuthorizationUrl(): Uri = {
     discordAPI.getAuthorizationUrl()

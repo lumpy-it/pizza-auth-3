@@ -89,6 +89,7 @@ class Webapp(fullconfig: ConfigFile,
   val update = updater.getOrElse(new Update(crest, eveapi, graders))
 
   val discordBot = new DiscordBot(fullconfig.discord, ud)
+  discordBot.connect()
 
   // used for serializing JSON responses, for now
   val OM = new ObjectMapper()
@@ -842,6 +843,22 @@ class Webapp(fullconfig: ConfigFile,
           }
         case None =>
           BadRequest()
+      }
+    }
+
+    case req @ GET -> root / "discord" => {
+      req.getSession.map(_.updatePilot).flatMap(_.pilot) match {
+        case Some(p) if p.getGroups contains "admin" =>
+          val roles = discordBot.getRoles()
+          Ok(
+            templates.html.base(
+              "pizza-auth-3",
+              templates.html.discordroles(roles),
+              req.getSession.map(_.toNormalSession),
+              req.getSession.flatMap(_.pilot))).attachSessionifDefined(
+            req.getSession.map(_.copy(alerts = List())))
+        case _ =>
+          NotFound()
       }
     }
 

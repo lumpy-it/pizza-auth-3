@@ -53,7 +53,8 @@ object ConfigFile {
           clientSecret: String,
           redirectUrl: String,
           botToken: String,
-          guildId: String
+          guildId: String,
+          roles: Map[String, String] = Map()
   )
   case class ConfigFile(
       crest: CrestConfig,

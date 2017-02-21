@@ -1,0 +1,23 @@
+
+@(roles: List[(String, String)])
+
+<h2>Discord Roles Cheatsheet</h2>
+
+<div class="row">
+    <div class="col-md-4">
+       <table class="table table-striped">
+           <thead>
+               <tr>
+                   <th>Role Name</th><th>Role Id</th>
+               </tr>
+           </thead>
+           <tbody>
+           @for(role <- roles) {
+               <tr>
+                   <td>@role._1</td><td>@role._2</td>
+               </tr>
+           }
+           </tbody>
+        </table>
+    </div>
+</div>

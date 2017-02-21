@@ -77,6 +77,10 @@
     redirectUrl: "http://localhost:9021/discord/callback"
     botToken: "tokenhere"
     guildId: "12512124"
+    roles:
+      groupone: "1235"
+      grouptwo: "23234"
+      "group with spaces": "1234567"
 
   #############################################################################
   ## embedded ldap settings
