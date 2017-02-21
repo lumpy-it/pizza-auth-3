@@ -140,7 +140,7 @@ class Webapp(fullconfig: ConfigFile,
                   templates.html.main(
                     pilot,
                     discordId,
-                    discordBot.getAuthorisationUrl().toString()),
+                    discordBot.getAuthorizationUrl().toString()),
                   req.getSession.map(_.toNormalSession),
                   req.getSession.flatMap(_.pilot)
                 )
@@ -826,12 +826,20 @@ class Webapp(fullconfig: ConfigFile,
     }
 
     case req @ GET -> Root / "discord" / "callback" => {
+      val goback = SeeOther(Uri(path = "/"))
       req.getSession.map(_.updatePilot).flatMap(_.pilot) match {
         case Some(p) =>
-          val result = discordBot.handleDiscordCode(req,p)
-          SeeOther(Uri(path = "/account")).attachSessionifDefined((
-            req.flash(Alerts.info, result).map(_.updatePilot))
-          ))
+          req.params.get("code") match {
+            case Some(c) =>
+              val result = discordBot.handleDiscordCode(c,p).get
+              goback.attachSessionifDefined(
+                req.flash(Alerts.success, s"Successfully added discord user $result")
+                  .map(_.updatePilot))
+            case None =>
+              val error = req.params("error")
+              goback.attachSessionifDefined(
+                req.flash(Alerts.danger, s"Error adding discord user: $error"))
+          }
         case None =>
           BadRequest()
       }

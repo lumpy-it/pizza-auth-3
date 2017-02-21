@@ -17,112 +17,118 @@ import org.http4s.headers.Authorization
 import org.http4s.MediaType._
 import org.http4s.headers.`Content-Type`
 import sx.blah.discord.api.ClientBuilder
+import scalaz.concurrent.Task
 
 /**
   * Created by Kalu on 20/02/2017.
   */
-object DiscordBot {
+object DiscordAPI {
   val API_URL = "https://discordapp.com/api/"
   val TOKEN_URL = Uri.uri("https://discordapp.com/api/oauth2/token")
   val AUTHORIZE_URL = Uri.uri("https://discordapp.com/api/oauth2/authorize")
   val SCOPES = List("identify", "guilds.join")
+
+  case class DiscordUser(id: String,
+                         username: String,
+                         discriminator: String,
+                         avatar: Option[String],
+                         bot: Option[Boolean],
+                         mfa_enabled: Option[Boolean]
+                        )
+
+  case class DiscordGuildMember(deaf: Boolean,
+                                joined_at: String,
+                                user: DiscordUser,
+                                nick: Option[String],
+                                roles: List[String],
+                                mute: Boolean)
+
+  case class AddMemberParams(access_token: String, nick: String)
 }
 
-case class DiscordUser(id: String,
-                      username: String,
-                      discriminator: String,
-                      avatar: Option[String],
-                      bot: Option[Boolean],
-                       mfa_enabled: Option[Boolean]
-                    )
+class DiscordAPI(config: DiscordConfig)(implicit client:Client) {
 
-case class DiscordGuildMember(deaf: Boolean,
-                              joined_at: String,
-                              user: DiscordUser,
-                              nick: Option[String],
-                              roles: List[String],
-                              mute: Boolean)
-
-class DiscordBot(config: DiscordConfig, ud: UserDatabase)(implicit client: Client) {
-
-  //val discordClient = new ClientBuilder().withToken(config.botToken).build()
-
-
-  def getAuthorisationUrl(): Uri = {
-    DiscordBot.AUTHORIZE_URL
+  def getAuthorizationUrl(): Uri = {
+    DiscordAPI.AUTHORIZE_URL
       .withQueryParam("client_id", config.clientId)
       .withQueryParam("redirect_uri", config.redirectUrl)
       .withQueryParam("response_type", "code")
-      .withQueryParam("scope", DiscordBot.SCOPES.mkString(" "))
+      .withQueryParam("scope", DiscordAPI.SCOPES.mkString(" "))
   }
 
-  def getAccessToken(code: String): Option[String] = {
+  def token(code: String): Task[CallbackResponse] = {
     val req = Request(
       method = Method.POST,
-      uri = DiscordBot.TOKEN_URL
+      uri = DiscordAPI.TOKEN_URL
         .withQueryParam("grant_type", "authorization_code")
         .withQueryParam("code", code)
         .withQueryParam("redirect_uri", config.redirectUrl)
         .withQueryParam("client_id", config.clientId)
         .withQueryParam("client_secret", config.clientSecret))
-
-    val task = client.fetchAs[CallbackResponse](req)(jsonOf[CallbackResponse])
-    val res = task.unsafePerformSync
-
-    Some(res.access_token)
+    client.expect[CallbackResponse](req)(jsonOf[CallbackResponse])
   }
 
-  def getDiscordUserId(accessToken: String): Option[String] = {
+  def identify(accessToken: String): Task[DiscordAPI.DiscordUser] = {
     val token = OAuth2BearerToken(accessToken)
     val req = Request(
-      uri = Uri.uri("https://discordapp.com/api/users/@me"),
+      uri = Uri.fromString(DiscordAPI.API_URL + "users/@me").toOption.get,
       headers = Headers(new Authorization(token))
     )
-    val task = client.fetchAs[DiscordUser](req)(jsonOf[DiscordUser])
-    val res = task.unsafePerformSync
-    Some(res.id)
+    client.expect[DiscordAPI.DiscordUser](req)(jsonOf[DiscordAPI.DiscordUser])
   }
 
-  case class AddMemberParams(access_token: String, nick: String)
-
-  def addMember(userid: String, accessToken: String, p:Pilot): Option[String] = {
+  def addMember(userid: String, accessToken: String, nick: String): Task[DiscordAPI.DiscordGuildMember] = {
     val botToken = config.botToken
 
-    val json = AddMemberParams(accessToken,p.characterName).asJson
+    val json = DiscordAPI.AddMemberParams(accessToken,nick).asJson
 
     val req = Request(method = Method.PUT, uri = Uri.fromString(
-      DiscordBot.API_URL + "guilds/" + config.guildId + "/members/" + userid).toOption.get)
+      DiscordAPI.API_URL + "guilds/" + config.guildId + "/members/" + userid).toOption.get)
       .putHeaders(Header("Authorization", s"Bot $botToken"))
       .withBody(json)
 
-    val task = client.fetchAs[DiscordGuildMember](req)(jsonOf[DiscordGuildMember])
-    val res = task.unsafePerformSync
+    client.expect[DiscordAPI.DiscordGuildMember](req)(jsonOf[DiscordAPI.DiscordGuildMember])
+  }
+}
 
-    Some(res.user.id)
+class DiscordBot(config: DiscordConfig, ud: UserDatabase, dapi: Option[DiscordAPI] = None)(implicit client: Client) {
+
+  //val discordClient = new ClientBuilder().withToken(config.botToken).build()
+  val discordAPI = dapi.getOrElse(new DiscordAPI(config))
+
+  def getAuthorizationUrl(): Uri = {
+    discordAPI.getAuthorizationUrl()
+  }
+
+  def getAccessToken(code: String): Option[String] = {
+    discordAPI.token(code).unsafePerformSyncAttempt.toOption.map(_.access_token)
+  }
+
+  def getUserId(token: String): Option[String] = {
+    discordAPI.identify(token).unsafePerformSyncAttempt.toOption.map(_.id)
+  }
+
+  def addMember(userid: String, accessToken: String, p:Pilot): Option[String] = {
+    discordAPI.addMember(userid, accessToken, p.characterName).unsafePerformSyncAttempt
+      .toOption.map(_.user.id)
   }
 
   def saveDiscordId(discordId: String, p: Pilot): Option[String] = {
-    val json2 = p.metadata match {
+    p.metadata match {
       case json: ObjectNode =>
-        json.put("discordId", discordId)
-      case json: JsonNode => json
-    }
-    ud.updateUser(p.copy(metadata = json2))
-    Some(discordId)
-  }
-
-  def handleDiscordCode(req: Request, p: Pilot): String = {
-    req.params.get("code") match {
-      case Some(code) =>
-        val token = getAccessToken(code)
-        token
-          .flatMap(getDiscordUserId)
-          .flatMap((userid) => addMember(userid, token.get, p))
-          .flatMap((userid) => saveDiscordId(userid, p))
-        "success"
-      case None =>
-        "Error: " + req.params.getOrElse("error", "")
+        val json2 = json.put ("discordId", discordId)
+        ud.updateUser (p.copy (metadata = json2) )
+        Some (discordId)
+      case _ =>
+       None
     }
   }
 
+  def handleDiscordCode(code: String, p: Pilot): Option[String] = {
+    val token = getAccessToken(code)
+    token
+      .flatMap(getUserId)
+      .flatMap((userid) => addMember(userid, token.get, p))
+      .flatMap((userid) => saveDiscordId(userid, p))
+  }
 }
