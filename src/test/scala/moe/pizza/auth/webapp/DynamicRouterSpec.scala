@@ -784,7 +784,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
   "DynamicRouter" should "render the main page" in {
     val config = mock[ConfigFile]
     val authconfig = mock[AuthConfig]
-    val discordconfig = DiscordConfig("abc","secret","url","token")
+    val discordconfig = DiscordConfig("abc","secret","url","token","123")
     val ud = mock[UserDatabase]
     val pg = mock[PilotGrader]
     val crest = mock[CrestApi]
@@ -837,7 +837,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
   "DynamicRouter's main page" should "look differently with discord user" in {
     val config = mock[ConfigFile]
     val authconfig = mock[AuthConfig]
-    val discordconfig = DiscordConfig("abc","secret","url","token")
+    val discordconfig = DiscordConfig("abc","secret","url","token","123")
     val ud = mock[UserDatabase]
     val pg = mock[PilotGrader]
     val crest = mock[CrestApi]

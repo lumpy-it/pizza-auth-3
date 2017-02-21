@@ -76,6 +76,7 @@
     clientSecret: "secrethere"
     redirectUrl: "http://localhost:9021/discord/callback"
     botToken: "tokenhere"
+    guildId: "12512124"
 
   #############################################################################
   ## embedded ldap settings

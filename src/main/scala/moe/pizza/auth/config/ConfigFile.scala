@@ -52,7 +52,8 @@ object ConfigFile {
           clientId: String,
           clientSecret: String,
           redirectUrl: String,
-          botToken: String
+          botToken: String,
+          guildId: String
   )
   case class ConfigFile(
       crest: CrestConfig,

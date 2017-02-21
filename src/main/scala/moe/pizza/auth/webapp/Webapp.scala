@@ -88,7 +88,7 @@ class Webapp(fullconfig: ConfigFile,
 
   val update = updater.getOrElse(new Update(crest, eveapi, graders))
 
-  val discordBot = new DiscordBot(fullconfig.discord)
+  val discordBot = new DiscordBot(fullconfig.discord, ud)
 
   // used for serializing JSON responses, for now
   val OM = new ObjectMapper()
@@ -828,15 +828,10 @@ class Webapp(fullconfig: ConfigFile,
     case req @ GET -> Root / "discord" / "callback" => {
       req.getSession.map(_.updatePilot).flatMap(_.pilot) match {
         case Some(p) =>
-          (req.params.get("code"), req.params.get("error")) match {
-            case (Some(a), None) =>
-              println(a)
-            case (None, Some(err)) =>
-              println(err)
-            case (_,_) =>
-              println("what")
-          }
-          Ok()
+          val result = discordBot.handleDiscordCode(req,p)
+          SeeOther(Uri(path = "/account")).attachSessionifDefined((
+            req.flash(Alerts.info, result).map(_.updatePilot))
+          ))
         case None =>
           BadRequest()
       }
