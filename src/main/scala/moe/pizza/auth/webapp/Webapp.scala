@@ -912,6 +912,52 @@ class Webapp(fullconfig: ConfigFile,
           TemporaryRedirect(Uri(path = "/"))
       }
 
+    case req @ GET -> Root / "discord" / "update" / username =>
+      log.info(s"update route called for ${username}")
+      req.getSession.flatMap(_.pilot) match {
+        case Some(p) =>
+          p.getGroups contains "admin" match {
+            case true =>
+              ud.getUser(username) match {
+                case Some(u) =>
+                  discordBot.update(u)
+                  Ok()
+                case None =>
+                  NotFound()
+              }
+            case false =>
+              TemporaryRedirect(Uri(path = "/")).attachSessionifDefined(
+                req.flash(
+                  Alerts.warning,
+                  "You must be in the admin group to access that resource"))
+          }
+        case None =>
+          TemporaryRedirect(Uri(path = "/"))
+      }
+
+    case req @ GET -> Root / "discord" / "updateall" =>
+      log.info(s"update route called for all users")
+      req.getSession.flatMap(_.pilot) match {
+        case Some(p) =>
+          p.getGroups contains "admin" match {
+            case true =>
+              val updated = ud
+                .getAllUsers()
+                .map {
+                  discordBot.update
+                }
+
+              Ok()
+            case false =>
+              TemporaryRedirect(Uri(path = "/")).attachSessionifDefined(
+                req.flash(
+                  Alerts.warning,
+                  "You must be in the admin group to access that resource"))
+          }
+        case None =>
+          TemporaryRedirect(Uri(path = "/"))
+      }
+
     case req @ GET -> Root / "callback" => {
       val code = req.params("code")
       val state = req.params("state")

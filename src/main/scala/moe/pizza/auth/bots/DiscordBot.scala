@@ -14,10 +14,10 @@ import io.circe.syntax._
 import io.circe.generic.auto._
 import moe.pizza.auth.interfaces.UserDatabase
 import org.http4s.headers.Authorization
-import sx.blah.discord.api.ClientBuilder
+import sx.blah.discord.api.{ClientBuilder, IDiscordClient}
 import sx.blah.discord.api.events.{Event, IListener}
 import sx.blah.discord.handle.impl.events.ReadyEvent
-import sx.blah.discord.handle.obj.IGuild
+import sx.blah.discord.handle.obj.{IGuild, IRole, IUser}
 
 import scalaz.concurrent.Task
 import scala.collection.JavaConverters._
@@ -94,15 +94,17 @@ class DiscordAPI(config: DiscordConfig)(implicit client:Client) {
   }
 }
 
-class DiscordBot(
-                  config: DiscordConfig,
+class DiscordBot(config: DiscordConfig,
                   ud: UserDatabase,
-                  dapi: Option[DiscordAPI] = None)
+                  dapi: Option[DiscordAPI] = None,
+                 dclient: Option[IDiscordClient] = None)
                 (implicit client: Client) extends IListener[Event]{
 
-  val discordClient = new ClientBuilder().withToken(config.botToken).build()
   val discordAPI = dapi.getOrElse(new DiscordAPI(config))
+  val discordClient = dclient.getOrElse(new ClientBuilder().withToken(config.botToken).build())
+
   var guild : Option[IGuild] = None
+  var roleLookup : Map[String, IRole] = Map()
 
   def connect(): Unit = {
     discordClient.getDispatcher.registerListener(this)
@@ -114,8 +116,15 @@ class DiscordBot(
       case e: ReadyEvent =>
         guild = Some(discordClient.getGuildByID(config.guildId))
         println("DiscordBot: Saved Discord Guild Handle")
+
+        roleLookup = createRoleLookup()
       case _ =>
     }
+  }
+
+  def createRoleLookup(): Map[String, IRole] = {
+    val roles = guild.get.getRoles.asScala.toList
+    config.roles.map((x) => (x._1 -> roles.find(_.getID == x._2).get))
   }
 
   def getRoles(): List[(String, String)] = {
@@ -140,8 +149,13 @@ class DiscordBot(
   }
 
   def addMember(userid: String, accessToken: String, p:Pilot): Option[String] = {
-    discordAPI.addMember(userid, accessToken, p.characterName).unsafePerformSyncAttempt
-      .toOption.map(_.user.id)
+    p.accountStatus match {
+      case Pilot.Status.internal =>
+        discordAPI.addMember(userid, accessToken, p.characterName).unsafePerformSyncAttempt
+          .toOption.map(_.user.id)
+      case _ =>
+        None
+    }
   }
 
   def saveDiscordId(discordId: String, p: Pilot): Option[String] = {
@@ -155,11 +169,66 @@ class DiscordBot(
     }
   }
 
+  def removeDiscordId(p: Pilot): Unit = {
+    p.metadata match {
+      case json: ObjectNode if json.has("discordId") =>
+        json.remove("discordId")
+        ud.updateUser (p.copy (metadata = json) )
+    }
+  }
+
+  def getDiscordId(p: Pilot): Option[String] = {
+    p.metadata.has("discordId") match {
+      case true => Some(p.metadata.get("discordId").asText())
+      case false => None
+    }
+  }
+
   def handleDiscordCode(code: String, p: Pilot): Option[String] = {
     val token = getAccessToken(code)
     token
       .flatMap(getUserId)
       .flatMap((userid) => addMember(userid, token.get, p))
       .flatMap((userid) => saveDiscordId(userid, p))
+  }
+
+  def getUserById(id: String): Option[IUser] = {
+    guild.get.getUserByID(id) match {
+      case null => None
+      case user => Some(user)
+    }
+  }
+
+  def update(p: Pilot): Unit = {
+    guild match {
+      case Some(g) =>
+        getDiscordId(p)
+          .flatMap(getUserById) match {
+          case Some(user) if p.accountStatus == Pilot.Status.internal =>
+            // sync roles
+            val rolesThere = user.getRolesForGuild(g).asScala.toSet
+
+            val groupsAndCorp = p.corporation :: p.authGroups
+
+            val rolesNeeded = groupsAndCorp.flatMap(roleLookup.get).toSet
+
+            val toBeDeleted = rolesThere diff rolesNeeded
+            val toBeAdded = rolesNeeded diff rolesThere
+
+            toBeDeleted.foreach(user.removeRole)
+            toBeAdded.foreach(user.addRole)
+          case Some(user) =>
+            // kick from discord and remove discord ID
+            guild.get.kickUser(user)
+            removeDiscordId(p)
+
+          case None =>
+        }
+
+
+
+      case None =>
+        println("rip")
+    }
   }
 }
