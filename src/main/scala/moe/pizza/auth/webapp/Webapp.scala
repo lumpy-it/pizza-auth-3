@@ -88,8 +88,15 @@ class Webapp(fullconfig: ConfigFile,
 
   val update = updater.getOrElse(new Update(crest, eveapi, graders))
 
-  val discordBot = new DiscordBot(fullconfig.discord, ud)
-  discordBot.connect()
+  val discordBot = fullconfig.discord match {
+    case Some(dConfig) =>
+      val dbot = new DiscordBot(dConfig, ud)
+      dbot.connect()
+      Some(dbot)
+    case None => None
+    case _ => None
+  }
+
 
   // used for serializing JSON responses, for now
   val OM = new ObjectMapper()
@@ -141,7 +148,7 @@ class Webapp(fullconfig: ConfigFile,
                   templates.html.main(
                     pilot,
                     discordId,
-                    discordBot.getAuthorizationUrl().toString()),
+                    discordBot.get.getAuthorizationUrl().toString()),
                   req.getSession.map(_.toNormalSession),
                   req.getSession.flatMap(_.pilot)
                 )
@@ -832,7 +839,7 @@ class Webapp(fullconfig: ConfigFile,
         case Some(p) =>
           req.params.get("code") match {
             case Some(c) =>
-              val result = discordBot.handleDiscordCode(c,p).get
+              val result = discordBot.get.handleDiscordCode(c,p).get
               goback.attachSessionifDefined(
                 req.flash(Alerts.success, s"Successfully added discord user $result")
                   .map(_.updatePilot))
@@ -849,7 +856,7 @@ class Webapp(fullconfig: ConfigFile,
     case req @ GET -> root / "discord" => {
       req.getSession.map(_.updatePilot).flatMap(_.pilot) match {
         case Some(p) if p.getGroups contains "admin" =>
-          val roles = discordBot.getRoles()
+          val roles = discordBot.get.getRoles()
           Ok(
             templates.html.base(
               "pizza-auth-3",
@@ -920,7 +927,7 @@ class Webapp(fullconfig: ConfigFile,
             case true =>
               ud.getUser(username) match {
                 case Some(u) =>
-                  discordBot.update(u)
+                  discordBot.get.update(u)
                   Ok()
                 case None =>
                   NotFound()
@@ -944,7 +951,7 @@ class Webapp(fullconfig: ConfigFile,
               val updated = ud
                 .getAllUsers()
                 .map {
-                  discordBot.update
+                  discordBot.get.update
                 }
 
               Ok()

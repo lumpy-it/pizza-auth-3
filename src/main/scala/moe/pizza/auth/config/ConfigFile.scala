@@ -59,7 +59,7 @@ object ConfigFile {
   case class ConfigFile(
       crest: CrestConfig,
       auth: AuthConfig,
-      discord: DiscordConfig,
+      discord: Option[DiscordConfig],
       embeddedldap: EmbeddedLdapConfig
   )
 

@@ -24,14 +24,14 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val discordAPI = mock[DiscordAPI]
     val discordClient = mock[IDiscordClient]
 
-    when(config.discord).thenReturn(discordConfig)
+    when(config.discord).thenReturn(Some(discordConfig))
 
     when(discordAPI.token("code")).thenReturn(Task {
       CallbackResponse("tokenishere","code",0,Some("blabla"))
     })
 
     implicit val client = PooledHttp1Client()
-    val discordBot = new DiscordBot(config.discord, ud, Some(discordAPI), Some(discordClient))
+    val discordBot = new DiscordBot(config.discord.get, ud, Some(discordAPI), Some(discordClient))
 
     discordBot.getAccessToken("code") must equal(Some("tokenishere"))
   }
@@ -43,14 +43,14 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val discordAPI = mock[DiscordAPI]
     val discordClient = mock[IDiscordClient]
 
-    when(config.discord).thenReturn(discordConfig)
+    when(config.discord).thenReturn(Some(discordConfig))
 
     when(discordAPI.identify("token")).thenReturn(Task {
       DiscordAPI.DiscordUser("12345","","",None,None,None)
     })
 
     implicit val client = PooledHttp1Client()
-    val discordBot = new DiscordBot(config.discord, ud, Some(discordAPI), Some(discordClient))
+    val discordBot = new DiscordBot(config.discord.get, ud, Some(discordAPI), Some(discordClient))
 
     discordBot.getUserId("token") must equal(Some("12345"))
   }
@@ -62,7 +62,7 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val discordAPI = mock[DiscordAPI]
     val discordClient = mock[IDiscordClient]
 
-    when(config.discord).thenReturn(discordConfig)
+    when(config.discord).thenReturn(Some(discordConfig))
 
     when(discordAPI.addMember("12345","token","Bob McFace")).thenReturn(Task {
       DiscordAPI.DiscordGuildMember(
@@ -76,7 +76,7 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     })
 
     implicit val client = PooledHttp1Client()
-    val discordBot = new DiscordBot(config.discord, ud, Some(discordAPI), Some(discordClient))
+    val discordBot = new DiscordBot(config.discord.get, ud, Some(discordAPI), Some(discordClient))
 
     val p = new Pilot("bob_mcface",Pilot.Status.internal,null,null,"Bob McFace",null,null,List(),List(),List())
 
@@ -93,10 +93,10 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val discordAPI = mock[DiscordAPI]
     val discordClient = mock[IDiscordClient]
 
-    when(config.discord).thenReturn(discordConfig)
+    when(config.discord).thenReturn(Some(discordConfig))
 
     implicit val client = PooledHttp1Client()
-    val discordBot = new DiscordBot(config.discord, ud, Some(discordAPI), Some(discordClient))
+    val discordBot = new DiscordBot(config.discord.get, ud, Some(discordAPI), Some(discordClient))
 
     val p = new Pilot("bob_mcface",
       null,null,null,null,null,Pilot.OM.createObjectNode(),List(),List(),List())
@@ -113,10 +113,10 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val discordAPI = mock[DiscordAPI]
     val discordClient = mock[IDiscordClient]
 
-    when(config.discord).thenReturn(discordConfig)
+    when(config.discord).thenReturn(Some(discordConfig))
 
     implicit val client = PooledHttp1Client()
-    val discordBot = new DiscordBot(config.discord, ud, Some(discordAPI), Some(discordClient))
+    val discordBot = new DiscordBot(config.discord.get, ud, Some(discordAPI), Some(discordClient))
 
     val p1 = new Pilot("bob_mcface",
       null,null,null,null,null,Pilot.OM.createObjectNode(),List(),List(),List())
@@ -134,10 +134,10 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val discordAPI = mock[DiscordAPI]
     val discordClient = mock[IDiscordClient]
 
-    when(config.discord).thenReturn(discordConfig)
+    when(config.discord).thenReturn(Some(discordConfig))
 
     implicit val client = PooledHttp1Client()
-    val discordBot = new DiscordBot(config.discord, ud, Some(discordAPI), Some(discordClient))
+    val discordBot = new DiscordBot(config.discord.get, ud, Some(discordAPI), Some(discordClient))
 
     val p = new Pilot("bob_mcface",
       null,null,null,null,null,Pilot.OM.readTree("{\"discordId\":\"12345\"}"),List(),List(),List())
@@ -153,9 +153,9 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val discordAPI = mock[DiscordAPI]
     val discordClient = mock[IDiscordClient]
 
-    when(config.discord).thenReturn(discordConfig)
+    when(config.discord).thenReturn(Some(discordConfig))
     implicit val client = PooledHttp1Client()
-    val discordBot = new DiscordBot(config.discord, ud, Some(discordAPI), Some(discordClient))
+    val discordBot = new DiscordBot(config.discord.get, ud, Some(discordAPI), Some(discordClient))
 
     val guild = mock[IGuild]
     val role = mock[IRole]
@@ -175,11 +175,11 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val discordAPI = mock[DiscordAPI]
     val discordClient = mock[IDiscordClient]
 
-    when(config.discord).thenReturn(discordConfig)
+    when(config.discord).thenReturn(Some(discordConfig))
     when(discordConfig.roles).thenReturn(Map("testAuthGroup" -> "12345"))
 
     implicit val client = PooledHttp1Client()
-    val discordBot = new DiscordBot(config.discord, ud, Some(discordAPI), Some(discordClient))
+    val discordBot = new DiscordBot(config.discord.get, ud, Some(discordAPI), Some(discordClient))
 
     val guild = mock[IGuild]
     val role = mock[IRole]
@@ -199,11 +199,11 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val discordAPI = mock[DiscordAPI]
     val discordClient = mock[IDiscordClient]
 
-    when(config.discord).thenReturn(discordConfig)
+    when(config.discord).thenReturn(Some(discordConfig))
     when(discordConfig.roles).thenReturn(Map("testAuthGroup" -> "12345"))
 
     implicit val client = PooledHttp1Client()
-    val discordBot = new DiscordBot(config.discord, ud, Some(discordAPI), Some(discordClient))
+    val discordBot = new DiscordBot(config.discord.get, ud, Some(discordAPI), Some(discordClient))
 
     val p = new Pilot("bob_mcface",
       Pilot.Status.internal,null,null,null,null,Pilot.OM.readTree("{\"discordId\":\"12345\"}"),List("testAuthGroup"),List(),List())

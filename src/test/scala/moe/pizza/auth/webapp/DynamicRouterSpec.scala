@@ -791,7 +791,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val db = mock[EveMapDb]
     val update = mock[Update]
     when(config.auth).thenReturn(authconfig)
-    when(config.discord).thenReturn(discordconfig)
+    when(config.discord).thenReturn(Some(discordconfig))
     when(crest.redirect("login", Webapp.defaultCrestScopes))
       .thenReturn("http://login.eveonline.com/whatever")
 
@@ -844,7 +844,7 @@ class DynamicRouterSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val db = mock[EveMapDb]
     val update = mock[Update]
     when(config.auth).thenReturn(authconfig)
-    when(config.discord).thenReturn(discordconfig)
+    when(config.discord).thenReturn(Some(discordconfig))
 
     val app = new Webapp(config,
       pg,
