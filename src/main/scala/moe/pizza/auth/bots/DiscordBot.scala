@@ -215,7 +215,7 @@ class DiscordBot(config: DiscordConfig,
             val toBeDeleted = rolesThere diff rolesNeeded
             val toBeAdded = rolesNeeded diff rolesThere
 
-            toBeDeleted.foreach(user.removeRole)
+            toBeDeleted.filter(_.getName() != "@everyone").foreach(user.removeRole)
             toBeAdded.foreach(user.addRole)
           case Some(user) =>
             // kick from discord and remove discord ID

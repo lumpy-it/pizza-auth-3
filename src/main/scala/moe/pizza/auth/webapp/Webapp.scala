@@ -48,7 +48,7 @@ import scalaz.\/-
 object Webapp {
   val PILOT = "pilot"
   val defaultCrestScopes =
-    List("characterLocationRead", "characterAccountRead", "fleetRead")
+List("publicData", "esi-location.read_location.v1", "esi-location.read_ship_type.v1", "esi-skills.read_skills.v1", "esi-skills.read_skillqueue.v1", "esi-clones.read_clones.v1", "esi-fleets.read_fleet.v1", "esi-fleets.write_fleet.v1")
 }
 
 class Webapp(fullconfig: ConfigFile,
@@ -367,7 +367,7 @@ class Webapp(fullconfig: ConfigFile,
           Ok(
             templates.html.base(
               "pizza-auth-3",
-              templates.html.groups(p, groups.closed, groups.open),
+              templates.html.groups(p, groups.closed),
               req.getSession.map(_.toNormalSession),
               req.getSession.flatMap(_.pilot))).attachSessionifDefined(
             req.getSession.map(_.copy(alerts = List())))
