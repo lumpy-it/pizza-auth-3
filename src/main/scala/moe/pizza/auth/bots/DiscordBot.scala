@@ -18,6 +18,8 @@ import sx.blah.discord.api.{ClientBuilder, IDiscordClient}
 import sx.blah.discord.api.events.{Event, IListener}
 import sx.blah.discord.handle.impl.events.ReadyEvent
 import sx.blah.discord.handle.obj.{IGuild, IRole, IUser}
+import sx.blah.discord.util.RequestBuffer
+import sx.blah.discord.util.RequestBuffer.IVoidRequest
 
 import scalaz.concurrent.Task
 import scala.collection.JavaConverters._
@@ -215,11 +217,21 @@ class DiscordBot(config: DiscordConfig,
             val toBeDeleted = rolesThere diff rolesNeeded
             val toBeAdded = rolesNeeded diff rolesThere
 
-            toBeDeleted.filter(_.getName() != "@everyone").foreach(user.removeRole)
-            toBeAdded.foreach(user.addRole)
+
+            toBeDeleted.filter(_.getName() != "@everyone").foreach((role) =>
+              RequestBuffer.request(new IVoidRequest {
+                override def doRequest() = user.removeRole(role)
+              }))
+
+            toBeAdded.foreach((role) =>
+              RequestBuffer.request(new IVoidRequest {
+                override def doRequest() = user.addRole(role)
+              }))
           case Some(user) =>
             // kick from discord and remove discord ID
-            guild.get.kickUser(user)
+            RequestBuffer.request(new IVoidRequest {
+              override def doRequest() = guild.get.kickUser(user)
+            })
             removeDiscordId(p)
 
           case None =>
