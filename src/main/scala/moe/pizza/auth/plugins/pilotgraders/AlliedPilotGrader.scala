@@ -49,7 +49,7 @@ class AlliedPilotGrader(threshold: Double,
     extends PilotGrader {
 
   val logger = LoggerFactory.getLogger(getClass)
-  val eveapi = eve.getOrElse(new EVEAPI(client))
+  val eveapi = eve.getOrElse(new EVEAPI(client, key=Some(apikey)))
   var allies = pullAllies()
 
   allies match {
