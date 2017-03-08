@@ -1,5 +1,7 @@
 package moe.pizza.auth.bots
 
+import java.util.concurrent.TimeUnit
+
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import moe.pizza.crestapi.CrestApi.CallbackResponse
@@ -14,12 +16,14 @@ import io.circe.syntax._
 import io.circe.generic.auto._
 import moe.pizza.auth.interfaces.UserDatabase
 import org.http4s.headers.Authorization
+import org.joda.time.Seconds
+import org.log4s.getLogger
 import sx.blah.discord.api.{ClientBuilder, IDiscordClient}
 import sx.blah.discord.api.events.{Event, IListener}
 import sx.blah.discord.handle.impl.events.ReadyEvent
 import sx.blah.discord.handle.obj.{IGuild, IRole, IUser}
 import sx.blah.discord.util.RequestBuffer
-import sx.blah.discord.util.RequestBuffer.IVoidRequest
+import sx.blah.discord.util.RequestBuffer.{IRequest, IVoidRequest}
 
 import scalaz.concurrent.Task
 import scala.collection.JavaConverters._
@@ -108,6 +112,8 @@ class DiscordBot(config: DiscordConfig,
   var guild : Option[IGuild] = None
   var roleLookup : Map[String, IRole] = Map()
 
+  private[this] val log = getLogger
+
   def connect(): Unit = {
     discordClient.getDispatcher.registerListener(this)
     discordClient.login()
@@ -117,7 +123,7 @@ class DiscordBot(config: DiscordConfig,
     t match {
       case e: ReadyEvent =>
         guild = Some(discordClient.getGuildByID(config.guildId))
-        println("DiscordBot: Saved Discord Guild Handle")
+        log.info("DiscordBot: Saved Discord Guild Handle")
 
         roleLookup = createRoleLookup()
       case _ =>
@@ -208,7 +214,10 @@ class DiscordBot(config: DiscordConfig,
           .flatMap(getUserById) match {
           case Some(user) if p.accountStatus == Pilot.Status.internal =>
             // sync roles
-            val rolesThere = user.getRolesForGuild(g).asScala.toSet
+            val rolesThere = RequestBuffer.request(
+              new IRequest[java.util.List[IRole]] {
+                override def request() : java.util.List[IRole] = user.getRolesForGuild(g)
+              }).get.asScala.toSet
 
             val groupsAndCorp = p.corporation :: p.authGroups
 
@@ -240,7 +249,7 @@ class DiscordBot(config: DiscordConfig,
 
 
       case None =>
-        println("rip")
+        log.error("rip")
     }
   }
 }

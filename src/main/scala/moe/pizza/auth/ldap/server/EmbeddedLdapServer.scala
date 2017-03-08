@@ -106,7 +106,7 @@ class EmbeddedLdapServer(instancePath: String,
       adminsession,
       "src/main/resources/schemasds/" + basedn.replace("ou=", "") + ".ldif")
     val r = ll.execute()
-    log.info("attempted to insert schemas, result :%d".format(r))
+    log.debug("attempted to insert schemas, result :%d".format(r))
   }
 
   @throws(classOf[Exception])
@@ -152,7 +152,7 @@ class EmbeddedLdapServer(instancePath: String,
         new AddOperationContext(directoryService.getAdminSession,
                                 partitionroot))
     }
-    log.info(
+    log.debug(
       "partition was set up for %s".format(partition.getSuffixDn.toString))
   }
 

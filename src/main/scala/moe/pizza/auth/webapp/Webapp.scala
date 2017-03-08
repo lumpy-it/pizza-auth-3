@@ -194,7 +194,7 @@ class Webapp(fullconfig: ConfigFile,
     }
 
     case req @ GET -> Root / "signup" / "confirm" => {
-      log.info("following route for GET signup/confirm")
+      log.debug("following route for GET signup/confirm")
       req.getSession
         .flatMap(_.signupData)
         .map { signup =>
@@ -239,29 +239,29 @@ class Webapp(fullconfig: ConfigFile,
             pilot.unsafePerformSync
           } match {
             case TSuccess(p) =>
-              log.info(s"pilot has been read out of XML API: ${p}")
+              log.debug(s"pilot has been read out of XML API: ${p}")
               // grade the pilot
               val result = graders.grade(p)
-              log.info(s"pilot was graded as ${result}")
+              log.debug(s"pilot was graded as ${result}")
               val gradedpilot = p.withNewAccountStatus(result)
-              log.info(s"pilot has been graded: ${gradedpilot}")
+              log.debug(s"pilot has been graded: ${gradedpilot}")
               // mark it as ineligible if it fell through
               val gradedpilot2 =
                 if (gradedpilot.accountStatus == Pilot.Status.unclassified) {
-                  log.info("marking pilot as Ineligible")
+                  log.debug("marking pilot as Ineligible")
                   gradedpilot.copy(accountStatus = Pilot.Status.ineligible)
                 } else {
-                  log.info("not marking pilot as Ineligible")
+                  log.debug("not marking pilot as Ineligible")
                   gradedpilot
                 }
-              log.info("trying to redirect back to signup confirm")
+              log.debug("trying to redirect back to signup confirm")
               Ok(
                 templates.html.base("pizza-auth-3",
                                     templates.html.signup(gradedpilot2),
                                     req.getSession.map(_.toNormalSession),
                                     None))
             case TFailure(f) =>
-              log.info(
+              log.debug(
                 s"failure when grading pilot, redirecting back ${f.toString}")
               val newsession = req.flash(
                 Alerts.warning,
@@ -274,7 +274,7 @@ class Webapp(fullconfig: ConfigFile,
     }
 
     case req @ POST -> Root / "signup" / "confirm" => {
-      log.info("signup confirm called")
+      log.debug("signup confirm called")
       req.getSession
         .flatMap(_.signupData)
         .map { signup =>
@@ -319,29 +319,29 @@ class Webapp(fullconfig: ConfigFile,
             pilot.unsafePerformSync
           } match {
             case TSuccess(p) =>
-              log.info(s"pilot has been read out of XML API: ${p}")
+              log.debug(s"pilot has been read out of XML API: ${p}")
               // grade the pilot
               val result = graders.grade(p)
-              log.info(s"pilot was graded as ${result}")
+              log.debug(s"pilot was graded as ${result}")
               val gradedpilot = p.withNewAccountStatus(result)
-              log.info(s"pilot has been graded: ${gradedpilot}")
+              log.debug(s"pilot has been graded: ${gradedpilot}")
               // mark it as ineligible if it fell through
               val gradedpilot2 =
                 if (gradedpilot.accountStatus == Pilot.Status.unclassified) {
-                  log.info("marking pilot as Ineligible")
+                  log.debug("marking pilot as Ineligible")
                   gradedpilot.copy(accountStatus = Pilot.Status.ineligible)
                 } else {
-                  log.info("not marking pilot as Ineligible")
+                  log.debug("not marking pilot as Ineligible")
                   gradedpilot
                 }
               req.decode[UrlForm] { data =>
                 val newemail = data.getFirstOrElse("email", "none")
                 val pilotwithemail = gradedpilot2.copy(email = newemail)
                 val password = data.getFirst("password").get
-                log.info(s"signing up ${pilotwithemail.uid}")
-                log.info(OM.writeValueAsString(pilotwithemail))
+                log.debug(s"signing up ${pilotwithemail.uid}")
+                log.debug(OM.writeValueAsString(pilotwithemail))
                 val res = ud.addUser(pilotwithemail, password)
-                log.info(s"$res")
+                log.debug(s"$res")
                 SeeOther(Uri(path = "/")).attachSessionifDefined(
                   req
                     .flash(Alerts.success,
@@ -350,7 +350,7 @@ class Webapp(fullconfig: ConfigFile,
                 )
               }
             case TFailure(f) =>
-              log.info(
+              log.debug(
                 s"failure when grading pilot, redirecting back ${f.toString}")
               val newsession = req.flash(
                 Alerts.warning,
@@ -539,7 +539,7 @@ class Webapp(fullconfig: ConfigFile,
                     (kv._1, kv._2, kv._3.unsafePerformSyncFor(2 seconds))
                   }
                 }
-              log.info(locations.toString)
+              log.debug(locations.toString)
               val res = locations
                 .map(_.toOption)
                 .flatten
@@ -575,7 +575,7 @@ class Webapp(fullconfig: ConfigFile,
                 val groups = flags.flatMap { g =>
                   form.getFirst(g).map(_ => g.capitalize)
                 }
-                log.info(s"sending a ping to groups ${groups}")
+                log.debug(s"sending a ping to groups ${groups}")
                 val users = groups.map(name =>
                   (name, ud.getUsers(s"accountStatus=${name}")))
                 val message = form.getFirstOrElse(
@@ -616,7 +616,7 @@ class Webapp(fullconfig: ConfigFile,
             case true =>
               req.decode[UrlForm] { form =>
                 val group = form.getFirstOrElse("group", "none")
-                log.info(s"sending a ping to group ${group}")
+                log.debug(s"sending a ping to group ${group}")
                 val users = ud.getGroupUsers(group)
                 val message = form.getFirstOrElse(
                   "message",
@@ -897,7 +897,7 @@ class Webapp(fullconfig: ConfigFile,
       }
 
     case req @ GET -> Root / "discord" / "update" / username =>
-      log.info(s"update route called for ${username}")
+      log.info(s"discord update route called for ${username}")
       req.getSession.flatMap(_.pilot) match {
         case Some(p) =>
           p.getGroups contains "admin" match {
@@ -927,7 +927,7 @@ class Webapp(fullconfig: ConfigFile,
       val verify = crest.verify(callbackresults.access_token).unsafePerformSync
       state match {
         case "signup" =>
-          log.info(s"signup route in callback for ${verify.CharacterName}")
+          log.debug(s"signup route in callback for ${verify.CharacterName}")
           val newSession = req.getSession.map(x =>
             x.copy(signupData =
               Some(new SignupData(verify, callbackresults.refresh_token.get))))
