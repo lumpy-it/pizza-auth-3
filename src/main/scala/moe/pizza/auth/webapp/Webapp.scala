@@ -34,7 +34,7 @@ import scala.util.{Failure => TFailure}
 import scala.concurrent.duration._
 import scala.concurrent.Await
 import moe.pizza.crestapi.character.location.Types.Location
-import org.slf4j.LoggerFactory
+
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
@@ -44,6 +44,8 @@ import moe.pizza.auth.webapp.rest.{RestKeyMiddleware, RestResource}
 import org.http4s.circe._
 
 import scalaz.\/-
+
+import org.log4s._
 
 object Webapp {
   val PILOT = "pilot"
@@ -63,8 +65,9 @@ class Webapp(fullconfig: ConfigFile,
              broadcasters: List[BroadcastService] =
                List.empty[BroadcastService]) {
 
-  val log = LoggerFactory.getLogger(getClass)
+  private[this] val log = getLogger
   log.info("created Webapp")
+
   val config = fullconfig.crest
   val groupconfig = fullconfig.auth.groups
 
@@ -893,32 +896,6 @@ class Webapp(fullconfig: ConfigFile,
           TemporaryRedirect(Uri(path = "/"))
       }
 
-    case req @ GET -> Root / "updateall" =>
-      log.info(s"update route called for all users")
-      req.getSession.flatMap(_.pilot) match {
-        case Some(p) =>
-          p.getGroups contains "admin" match {
-            case true =>
-              val updated = ud
-                .getAllUsers()
-                .filter(_.uid != "pingbot")
-                .map {
-                  update.updateUser
-                }
-                .filter { p =>
-                  ud.updateUser(p)
-                }
-              Ok(OM.writeValueAsString(updated))
-            case false =>
-              TemporaryRedirect(Uri(path = "/")).attachSessionifDefined(
-                req.flash(
-                  Alerts.warning,
-                  "You must be in the admin group to access that resource"))
-          }
-        case None =>
-          TemporaryRedirect(Uri(path = "/"))
-      }
-
     case req @ GET -> Root / "discord" / "update" / username =>
       log.info(s"update route called for ${username}")
       req.getSession.flatMap(_.pilot) match {
@@ -932,29 +909,6 @@ class Webapp(fullconfig: ConfigFile,
                 case None =>
                   NotFound()
               }
-            case false =>
-              TemporaryRedirect(Uri(path = "/")).attachSessionifDefined(
-                req.flash(
-                  Alerts.warning,
-                  "You must be in the admin group to access that resource"))
-          }
-        case None =>
-          TemporaryRedirect(Uri(path = "/"))
-      }
-
-    case req @ GET -> Root / "discord" / "updateall" =>
-      log.info(s"update route called for all users")
-      req.getSession.flatMap(_.pilot) match {
-        case Some(p) =>
-          p.getGroups contains "admin" match {
-            case true =>
-              val updated = ud
-                .getAllUsers()
-                .map {
-                  discordBot.get.update
-                }
-
-              Ok()
             case false =>
               TemporaryRedirect(Uri(path = "/")).attachSessionifDefined(
                 req.flash(
@@ -1028,6 +982,30 @@ class Webapp(fullconfig: ConfigFile,
           TemporaryRedirect(Uri(path = "/"))
       }
     }
+  }
+
+  def adminRouter = HttpService {
+    case req @ GET -> Root / "updateall" =>
+      log.info(s"update route called for all users")
+      val updated = ud
+        .getAllUsers()
+        .filter(_.uid != "pingbot")
+        .map {
+          update.updateUser
+        }
+        .filter { p =>
+          ud.updateUser(p)
+        }
+      Ok(OM.writeValueAsString(updated))
+
+    case req @ GET -> Root / "discord" / "updateall" =>
+      val updated = ud
+        .getAllUsers()
+        .map {
+          discordBot.get.update
+        }
+
+      Ok()
   }
 
   val secretKey = "SECRET IS GOING HERE"
