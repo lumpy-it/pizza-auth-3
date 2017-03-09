@@ -18,7 +18,7 @@
     <logger name="org.apache.directory" level="WARN" />
     <logger name="sx.blah.discord" level="WARN" />
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />
     </root>
