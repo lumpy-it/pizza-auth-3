@@ -207,12 +207,13 @@ class DiscordBot(config: DiscordConfig,
     }
   }
 
-  def update(p: Pilot): Unit = {
+  def update(p: Pilot): Option[String] = {
     guild match {
       case Some(g) =>
         getDiscordId(p)
           .flatMap(getUserById) match {
           case Some(user) if p.accountStatus == Pilot.Status.internal =>
+            log.debug(p.uid)
             // sync roles
             val rolesThere = RequestBuffer.request(
               new IRequest[java.util.List[IRole]] {
@@ -223,11 +224,12 @@ class DiscordBot(config: DiscordConfig,
 
             val rolesNeeded = groupsAndCorp.flatMap(roleLookup.get).toSet
 
-            val toBeDeleted = rolesThere diff rolesNeeded
+            val toBeDeleted = (rolesThere diff rolesNeeded).filter(_.getName() != "@everyone")
             val toBeAdded = rolesNeeded diff rolesThere
 
+            val changes = toBeDeleted.size + toBeAdded.size
 
-            toBeDeleted.filter(_.getName() != "@everyone").foreach((role) =>
+            toBeDeleted.foreach((role) =>
               RequestBuffer.request(new IVoidRequest {
                 override def doRequest() = user.removeRole(role)
               }))
@@ -236,20 +238,26 @@ class DiscordBot(config: DiscordConfig,
               RequestBuffer.request(new IVoidRequest {
                 override def doRequest() = user.addRole(role)
               }))
+            changes match {
+              case 0 => None
+              case _ => Some(p.uid)
+            }
           case Some(user) =>
             // kick from discord and remove discord ID
             RequestBuffer.request(new IVoidRequest {
               override def doRequest() = guild.get.kickUser(user)
             })
             removeDiscordId(p)
+            Some(p.uid)
 
-          case None =>
+          case None => None
         }
 
 
 
       case None =>
         log.error("rip")
+        None
     }
   }
 }

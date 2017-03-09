@@ -999,13 +999,12 @@ class Webapp(fullconfig: ConfigFile,
       Ok(OM.writeValueAsString(updated))
 
     case req @ GET -> Root / "discord" / "updateall" =>
-      val updated = ud
-        .getAllUsers()
-        .map {
-          discordBot.get.update
-        }
+      val users = ud.getAllUsers()
+      val updated = users.flatMap((p) => {
+          discordBot.get.update(p)
+        })
 
-      Ok()
+      Ok(OM.writeValueAsString(updated))
   }
 
   val secretKey = "SECRET IS GOING HERE"
