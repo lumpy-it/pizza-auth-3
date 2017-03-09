@@ -22,6 +22,7 @@ project/plugins/project/
 # common files for this project
 server
 config.yml
+logback.xml
 
 internal-map
 .gitignore
