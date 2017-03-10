@@ -226,7 +226,8 @@ class DiscordBot(config: DiscordConfig,
 
             val toBeDeleted = (rolesThere diff rolesNeeded).filter(_.getName() != "@everyone")
             val toBeAdded = rolesNeeded diff rolesThere
-
+            log.debug(toBeDeleted.toString)
+            log.debug(toBeAdded.toString)
             val changes = toBeDeleted.size + toBeAdded.size
 
             toBeDeleted.foreach((role) =>
