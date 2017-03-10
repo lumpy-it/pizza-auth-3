@@ -49,7 +49,7 @@ class AlliedPilotGrader(threshold: Double,
     extends PilotGrader {
 
   val logger = LoggerFactory.getLogger(getClass)
-  val eveapi = eve.getOrElse(new EVEAPI(client))
+  val eveapi = eve.getOrElse(new EVEAPI(client, key=Some(apikey)))
   var allies = pullAllies()
 
   allies match {
@@ -87,20 +87,20 @@ class AlliedPilotGrader(threshold: Double,
   }
 
   override def grade(p: Pilot): Status.Value = {
-    logger.info(
+    logger.debug(
       s"running AlliedPilotGrader against ${p.characterName}/${p.corporation}/${p.alliance}")
-    logger.info(s"it's cached list is ${allies}")
+    logger.debug(s"it's cached list is ${allies}")
     allies match {
       case Some(a) =>
         if (a.cachedUntil.plusHours(1).isBeforeNow) {
-          logger.info(
+          logger.debug(
             s"refreshing contact list, it expired, it was cached until ${a.cachedUntil}")
           val newallies = pullAllies()
           if (newallies.isDefined) {
             allies = newallies
             grade(p)
           } else {
-            logger.info("failed to refresh, classifying with old data")
+            logger.debug("failed to refresh, classifying with old data")
             p match {
               case _ if a.pilots.exists(_ == p.characterName) => Status.ally
               case _ if a.corporations.exists(_ == p.corporation) =>

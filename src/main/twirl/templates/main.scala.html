@@ -1,19 +1,51 @@
-@(pilot: moe.pizza.auth.models.Pilot, server: String)
+@(pilot: moe.pizza.auth.models.Pilot, discordId: Option[String], discordUrl: String)
+@import moe.pizza.auth.models.Pilot
+@import moe.pizza.crestapi.CrestApi
 
 <div class="row well form-inline custom-form">
-    <h3>Jabber</h3>
-    <table class="table">
-        <tr>
-            <td>Server</td>
-            <td>@{server}</td>
-        </tr>
-        <tr>
-            <td>Username</td>
-            <td>@{pilot.uid}</td>
-        </tr>
-        <tr>
-            <td>jabber ID</td>
-            <td>@{pilot.uid}@@@{server}</td>
-        </tr>
-    </table>
+    <h3>Discord</h3>
+    @if(discordId.isDefined) {
+        <table class="table">
+            <tr>
+                <td>DiscordID</td>
+                <td>@{discordId.get}</td>
+            </tr>
+        </table>
+    } else {
+        <a href="@(discordUrl)">Click here to join the discord server</a>
+    }
+</div>
+<div class="row well form-inline custom-form">
+    <h3>Mumble</h3>
+        <table class="table">
+            <tr>
+                <td>Zugangsdaten</td>
+                <td>
+					<table style="height: 100px;" width="300">
+					<tbody>
+						<tr>
+							<td>Bezeichner:</td>
+							<td>LUMPY</td>
+						</tr>
+						<tr>
+							<td>Adresse:</td>
+							<td>lumpy.eu</td>
+						</tr>
+						<tr>
+							<td>Port:</td>
+							<td>64738</td>
+						</tr>
+						<tr>
+							<td>Benutzername:</td>
+							<td>@pilot.uid</td>
+						</tr>
+						<tr>
+							<td>Passwort:</td>
+							<td><em>auth pw</em></td>
+						</tr>
+					</tbody>
+					</table>
+				</td>
+            </tr>
+        </table>
 </div>

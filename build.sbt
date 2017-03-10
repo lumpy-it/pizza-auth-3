@@ -4,6 +4,8 @@ version := "1.0"
 
 scalaVersion := "2.11.7"
 
+resolvers += "jitpack" at "https://jitpack.io"
+
 resolvers += Resolver.jcenterRepo
 
 fork := true
@@ -21,9 +23,13 @@ libraryDependencies ++= Seq(
   "org.http4s"                       %% "http4s-circe"              % HTTP4S_VERSION,
   "org.http4s"                       %% "http4s-twirl"              % HTTP4S_VERSION,
   "org.http4s"                       %% "http4s-json4s"             % HTTP4S_VERSION,
-  // supporting libraries
-  "moe.pizza"                        %% "eveapi"                    % "0.56",
+  // logging
   "org.log4s"                        %% "log4s"                     % "1.2.0",
+  "ch.qos.logback"                   % "logback-classic"            % "1.1.7",
+  "ch.qos.logback"                   % "logback-core"               % "1.1.7",
+  // supporting libraries
+  "com.github.austinv11"             % "Discord4J"                  % "2.7.0",
+  "moe.pizza"                        %% "eveapi"                    % "0.56" exclude("org.slf4j", "slf4j-simple"),
   "com.github.scopt"                 %% "scopt"                     % "3.3.0",
   "com.googlecode.gettext-commons"   % "gettext-maven-plugin"       % "1.2.4",
   "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml"    % "2.6.1",
@@ -42,8 +48,8 @@ libraryDependencies ++= Seq(
   "org.igniterealtime.smack"         % "smack-extensions"           % "4.1.7",
   "org.igniterealtime.smack"         % "smack-java7"                % "4.1.7",
   // embedded services
-  "org.apache.directory.server"      % "apacheds-all"               % "2.0.0-M22",
-  "org.apache.kafka"                 %% "kafka"                     % "0.8.2.2" exclude("org.slf4j", "slf4j-log4j12"),
+  "org.apache.directory.server"      % "apacheds-all"               % "2.0.0-M22" exclude("org.slf4j", "slf4j-log4j12") exclude("org.slf4j", "slf4j-simple"),
+  "org.apache.kafka"                 %% "kafka"                     % "0.8.2.2" exclude("org.slf4j", "slf4j-log4j12") exclude("org.slf4j", "slf4j-simple"),
   "com.orientechnologies"            % "orientdb-server"            % "2.1.12"
 )
 
@@ -59,3 +65,13 @@ enablePlugins(SbtTwirl)
 coverageExcludedPackages := "templates\\.html\\.*;moe\\.pizza\\.auth\\.Main;moe\\.pizza\\.auth\\.queue.*"
 
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-maxSize", "5", "-minSuccessfulTests", "33", "-workers", "1", "-verbosity", "1")
+
+// Assembly
+
+mainClass in assembly := Some("moe.pizza.auth.Main")
+test in assembly := {}
+
+assemblyMergeStrategy in assembly := {
+ case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+ case x => MergeStrategy.first
+}

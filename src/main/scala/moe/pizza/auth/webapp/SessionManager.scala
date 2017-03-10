@@ -9,11 +9,11 @@ import moe.pizza.auth.webapp.SessionManager._
 import moe.pizza.auth.webapp.Types.{HydratedSession, Session, Session2}
 import org.http4s.{HttpService, _}
 import org.http4s.server._
-import org.slf4j.LoggerFactory
 import pdi.jwt.{JwtAlgorithm, JwtCirce, JwtClaim}
 import io.circe.generic.auto._
 import Utils._
 import io.circe.Decoder.Result
+import org.log4s.getLogger
 
 import scala.util.Try
 
@@ -25,7 +25,7 @@ object SessionManager {
 
 class SessionManager(secretKey: String, ud: UserDatabase)
     extends HttpMiddleware {
-  val log = LoggerFactory.getLogger(getClass)
+  private[this] val log = getLogger
   val OM = new ObjectMapper()
   OM.registerModule(DefaultScalaModule)
 
@@ -39,7 +39,7 @@ class SessionManager(secretKey: String, ud: UserDatabase)
   }
 
   override def apply(s: HttpService): HttpService = Service.lift { req =>
-    log.info(s"Intercepting request ${req}")
+    log.debug(s"Intercepting request ${req}")
     // TODO: this used to be nice with toOption, what happened
     val sessions =
       req.headers.get(headers.Cookie).toList.flatMap(_.values.list).flatMap {
@@ -56,7 +56,7 @@ class SessionManager(secretKey: String, ud: UserDatabase)
               Try { OM.readValue(myjwt.session, classOf[Session2]) }.toOption
             }
       }
-    log.info(s"found sessions: ${sessions}")
+    log.debug(s"found sessions: ${sessions}")
 
     // if we didn't find a valid session, make them one
     val session =
@@ -64,7 +64,7 @@ class SessionManager(secretKey: String, ud: UserDatabase)
 
     // do the inner request
     val hydrated = session.hydrate(ud)
-    log.info(s"running inner router with hydrated session ${hydrated}")
+    log.debug(s"running inner router with hydrated session ${hydrated}")
     val response =
       s(req.copy(attributes = req.attributes.put(HYDRATEDSESSION, hydrated)))
 
@@ -80,7 +80,7 @@ class SessionManager(secretKey: String, ud: UserDatabase)
         .flatMap(_.values.list)
         .filter(_.name == COOKIESESSION)
       if (resp.attributes.get(LOGOUT).isEmpty) {
-        log.info(s"saving the session as a cookie")
+        log.debug(s"saving the session as a cookie")
         val claim = JwtClaim(
             expiration = Some(
               Instant.now
@@ -93,7 +93,7 @@ class SessionManager(secretKey: String, ud: UserDatabase)
           new Cookie(COOKIESESSION, token, None, None, None, path = Some("/"))
         )
       } else {
-        log.info(s"log out flag was set, not saving any cookies")
+        log.debug(s"log out flag was set, not saving any cookies")
         resp.removeCookie(COOKIESESSION)
       }
     }

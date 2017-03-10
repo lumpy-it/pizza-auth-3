@@ -5,19 +5,14 @@ import com.fasterxml.jackson.databind.JsonNode
 import moe.pizza.auth.adapters.GraderChain
 import moe.pizza.auth.adapters.PilotGraderLike.PilotGraderFactory
 import moe.pizza.auth.interfaces.PilotGrader
+import org.http4s.client.Client
 import moe.pizza.auth.webapp.oauth.OAuthApplication
 
-import scala.concurrent.ExecutionContext
-import org.http4s.client.Client
 
 /**
   * Created by andi on 19/02/16.
   */
 object ConfigFile {
-  case class PingBotConfig(
-      host: String,
-      password: String
-  )
   case class EmbeddedLdapConfig(
       instancePath: String = "./ldap",
       port: Int = 389,
@@ -37,7 +32,6 @@ object ConfigFile {
       groupShortName: String,
       groups: AuthGroupConfig,
       graders: List[JsonNode],
-      pingbot: Option[PingBotConfig],
       restkeys: List[String],
       applications: List[OAuthApplication] = List()
   ) {
@@ -54,9 +48,18 @@ object ConfigFile {
       secretKey: String,
       redirectUrl: String
   )
+  case class DiscordConfig(
+          clientId: String,
+          clientSecret: String,
+          redirectUrl: String,
+          botToken: String,
+          guildId: String,
+          roles: Map[String, String] = Map()
+  )
   case class ConfigFile(
       crest: CrestConfig,
       auth: AuthConfig,
+      discord: Option[DiscordConfig],
       embeddedldap: EmbeddedLdapConfig
   )
 

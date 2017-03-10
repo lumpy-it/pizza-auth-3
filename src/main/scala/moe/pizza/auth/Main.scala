@@ -91,33 +91,25 @@ object Main {
                                       configfile.get.embeddedldap.port,
                                       "uid=admin,ou=system",
                                       internalpassword)
-              val broadcasters = configfile.get.auth.pingbot.map { c =>
-                new XmppBroadcastService(c.host, c.password)
-              }.toList
-              println(
-                s"constructed broadcasters from ${configfile.get.auth.pingbot}")
+
               val webapp = new Webapp(
                 configfile.get,
                 graders,
                 9021,
                 new LdapUserDatabase(lc,
                                      ldap.directoryService.getSchemaManager,
-                                     configfile.get.embeddedldap.basedn),
-                None,
-                None,
-                None,
-                None,
-                None,
-                broadcasters)
+                                     configfile.get.embeddedldap.basedn))
               val builder = BlazeBuilder
                 .mountService(webapp.router)
                 .bindSocketAddress(new InetSocketAddress("127.0.0.1", 9021))
+              val adminBuilder = BlazeBuilder
+                .mountService(webapp.adminRouter)
+                .bindSocketAddress(new InetSocketAddress("127.0.0.1", 9022))
               val server = builder.run
+              val adminServer = adminBuilder.run
               println(
                 s"LDAP server started on localhost:${configfile.get.embeddedldap.port} with admin password ${internalpassword}")
-              println("Web server started on 127.0.0.1:9021")
-              //val webapp = new Webapp(configfile.get, graders, 9021, new LdapUserDatabase(lc, ldap.directoryService.getSchemaManager))
-              //webapp.start()
+              println("Web server started on 127.0.0.1:9021 and :9022")
             }
           case None =>
             println("You must pick a set of servers to run")

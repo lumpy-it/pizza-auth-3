@@ -16,8 +16,6 @@ import org.http4s.dsl.{Root, _}
 import org.http4s.server._
 import org.http4s.server.staticcontent.ResourceService
 import org.http4s.server.syntax.ServiceOps
-
-
 import org.joda.time.DateTime
 import play.twirl.api.Html
 import moe.pizza.eveapi._
@@ -36,20 +34,23 @@ import scala.util.{Failure => TFailure}
 import scala.concurrent.duration._
 import scala.concurrent.Await
 import moe.pizza.crestapi.character.location.Types.Location
-import org.slf4j.LoggerFactory
+
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
+import moe.pizza.auth.bots.DiscordBot
 import moe.pizza.auth.webapp.oauth.OAuthResource
 import moe.pizza.auth.webapp.rest.{RestKeyMiddleware, RestResource}
 import org.http4s.circe._
 
 import scalaz.\/-
 
+import org.log4s._
+
 object Webapp {
   val PILOT = "pilot"
   val defaultCrestScopes =
-    List("characterLocationRead", "characterAccountRead", "fleetRead")
+List("publicData", "esi-location.read_location.v1", "esi-location.read_ship_type.v1", "esi-skills.read_skills.v1", "esi-skills.read_skillqueue.v1", "esi-clones.read_clones.v1", "esi-fleets.read_fleet.v1", "esi-fleets.write_fleet.v1")
 }
 
 class Webapp(fullconfig: ConfigFile,
@@ -64,8 +65,9 @@ class Webapp(fullconfig: ConfigFile,
              broadcasters: List[BroadcastService] =
                List.empty[BroadcastService]) {
 
-  val log = LoggerFactory.getLogger(getClass)
+  private[this] val log = getLogger
   log.info("created Webapp")
+
   val config = fullconfig.crest
   val groupconfig = fullconfig.auth.groups
 
@@ -88,6 +90,16 @@ class Webapp(fullconfig: ConfigFile,
   }
 
   val update = updater.getOrElse(new Update(crest, eveapi, graders))
+
+  val discordBot = fullconfig.discord match {
+    case Some(dConfig) =>
+      val dbot = new DiscordBot(dConfig, ud)
+      dbot.connect()
+      Some(dbot)
+    case None => None
+    case _ => None
+  }
+
 
   // used for serializing JSON responses, for now
   val OM = new ObjectMapper()
@@ -129,10 +141,17 @@ class Webapp(fullconfig: ConfigFile,
         case Some(s) =>
           s.pilot match {
             case Some(pilot) =>
+              val discordId = pilot.metadata.get("discordId") match {
+                case null => None
+                case s => Some(s.asText)
+               }
               Ok(
                 templates.html.base(
                   "pizza-auth-3",
-                  templates.html.main(pilot, getJabberServer(pilot)),
+                  templates.html.main(
+                    pilot,
+                    discordId,
+                    discordBot.get.getAuthorizationUrl().toString()),
                   req.getSession.map(_.toNormalSession),
                   req.getSession.flatMap(_.pilot)
                 )
@@ -175,7 +194,7 @@ class Webapp(fullconfig: ConfigFile,
     }
 
     case req @ GET -> Root / "signup" / "confirm" => {
-      log.info("following route for GET signup/confirm")
+      log.debug("following route for GET signup/confirm")
       req.getSession
         .flatMap(_.signupData)
         .map { signup =>
@@ -220,29 +239,29 @@ class Webapp(fullconfig: ConfigFile,
             pilot.unsafePerformSync
           } match {
             case TSuccess(p) =>
-              log.info(s"pilot has been read out of XML API: ${p}")
+              log.debug(s"pilot has been read out of XML API: ${p}")
               // grade the pilot
               val result = graders.grade(p)
-              log.info(s"pilot was graded as ${result}")
+              log.debug(s"pilot was graded as ${result}")
               val gradedpilot = p.withNewAccountStatus(result)
-              log.info(s"pilot has been graded: ${gradedpilot}")
+              log.debug(s"pilot has been graded: ${gradedpilot}")
               // mark it as ineligible if it fell through
               val gradedpilot2 =
                 if (gradedpilot.accountStatus == Pilot.Status.unclassified) {
-                  log.info("marking pilot as Ineligible")
+                  log.debug("marking pilot as Ineligible")
                   gradedpilot.copy(accountStatus = Pilot.Status.ineligible)
                 } else {
-                  log.info("not marking pilot as Ineligible")
+                  log.debug("not marking pilot as Ineligible")
                   gradedpilot
                 }
-              log.info("trying to redirect back to signup confirm")
+              log.debug("trying to redirect back to signup confirm")
               Ok(
                 templates.html.base("pizza-auth-3",
                                     templates.html.signup(gradedpilot2),
                                     req.getSession.map(_.toNormalSession),
                                     None))
             case TFailure(f) =>
-              log.info(
+              log.debug(
                 s"failure when grading pilot, redirecting back ${f.toString}")
               val newsession = req.flash(
                 Alerts.warning,
@@ -255,7 +274,7 @@ class Webapp(fullconfig: ConfigFile,
     }
 
     case req @ POST -> Root / "signup" / "confirm" => {
-      log.info("signup confirm called")
+      log.debug("signup confirm called")
       req.getSession
         .flatMap(_.signupData)
         .map { signup =>
@@ -300,29 +319,29 @@ class Webapp(fullconfig: ConfigFile,
             pilot.unsafePerformSync
           } match {
             case TSuccess(p) =>
-              log.info(s"pilot has been read out of XML API: ${p}")
+              log.debug(s"pilot has been read out of XML API: ${p}")
               // grade the pilot
               val result = graders.grade(p)
-              log.info(s"pilot was graded as ${result}")
+              log.debug(s"pilot was graded as ${result}")
               val gradedpilot = p.withNewAccountStatus(result)
-              log.info(s"pilot has been graded: ${gradedpilot}")
+              log.debug(s"pilot has been graded: ${gradedpilot}")
               // mark it as ineligible if it fell through
               val gradedpilot2 =
                 if (gradedpilot.accountStatus == Pilot.Status.unclassified) {
-                  log.info("marking pilot as Ineligible")
+                  log.debug("marking pilot as Ineligible")
                   gradedpilot.copy(accountStatus = Pilot.Status.ineligible)
                 } else {
-                  log.info("not marking pilot as Ineligible")
+                  log.debug("not marking pilot as Ineligible")
                   gradedpilot
                 }
               req.decode[UrlForm] { data =>
                 val newemail = data.getFirstOrElse("email", "none")
                 val pilotwithemail = gradedpilot2.copy(email = newemail)
                 val password = data.getFirst("password").get
-                log.info(s"signing up ${pilotwithemail.uid}")
-                log.info(OM.writeValueAsString(pilotwithemail))
+                log.debug(s"signing up ${pilotwithemail.uid}")
+                log.debug(OM.writeValueAsString(pilotwithemail))
                 val res = ud.addUser(pilotwithemail, password)
-                log.info(s"$res")
+                log.debug(s"$res")
                 SeeOther(Uri(path = "/")).attachSessionifDefined(
                   req
                     .flash(Alerts.success,
@@ -331,7 +350,7 @@ class Webapp(fullconfig: ConfigFile,
                 )
               }
             case TFailure(f) =>
-              log.info(
+              log.debug(
                 s"failure when grading pilot, redirecting back ${f.toString}")
               val newsession = req.flash(
                 Alerts.warning,
@@ -351,7 +370,7 @@ class Webapp(fullconfig: ConfigFile,
           Ok(
             templates.html.base(
               "pizza-auth-3",
-              templates.html.groups(p, groups.closed, groups.open),
+              templates.html.groups(p, groups.closed),
               req.getSession.map(_.toNormalSession),
               req.getSession.flatMap(_.pilot))).attachSessionifDefined(
             req.getSession.map(_.copy(alerts = List())))
@@ -520,7 +539,7 @@ class Webapp(fullconfig: ConfigFile,
                     (kv._1, kv._2, kv._3.unsafePerformSyncFor(2 seconds))
                   }
                 }
-              log.info(locations.toString)
+              log.debug(locations.toString)
               val res = locations
                 .map(_.toOption)
                 .flatten
@@ -556,7 +575,7 @@ class Webapp(fullconfig: ConfigFile,
                 val groups = flags.flatMap { g =>
                   form.getFirst(g).map(_ => g.capitalize)
                 }
-                log.info(s"sending a ping to groups ${groups}")
+                log.debug(s"sending a ping to groups ${groups}")
                 val users = groups.map(name =>
                   (name, ud.getUsers(s"accountStatus=${name}")))
                 val message = form.getFirstOrElse(
@@ -597,7 +616,7 @@ class Webapp(fullconfig: ConfigFile,
             case true =>
               req.decode[UrlForm] { form =>
                 val group = form.getFirstOrElse("group", "none")
-                log.info(s"sending a ping to group ${group}")
+                log.debug(s"sending a ping to group ${group}")
                 val users = ud.getGroupUsers(group)
                 val message = form.getFirstOrElse(
                   "message",
@@ -817,6 +836,42 @@ class Webapp(fullconfig: ConfigFile,
       }
     }
 
+    case req @ GET -> Root / "discord" / "callback" => {
+      val goback = SeeOther(Uri(path = "/"))
+      req.getSession.map(_.updatePilot).flatMap(_.pilot) match {
+        case Some(p) =>
+          req.params.get("code") match {
+            case Some(c) =>
+              val result = discordBot.get.handleDiscordCode(c,p).get
+              goback.attachSessionifDefined(
+                req.flash(Alerts.success, s"Successfully added discord user $result")
+                  .map(_.updatePilot))
+            case None =>
+              val error = req.params("error")
+              goback.attachSessionifDefined(
+                req.flash(Alerts.danger, s"Error adding discord user: $error"))
+          }
+        case None =>
+          BadRequest()
+      }
+    }
+
+    case req @ GET -> root / "discord" => {
+      req.getSession.map(_.updatePilot).flatMap(_.pilot) match {
+        case Some(p) if p.getGroups contains "admin" =>
+          val roles = discordBot.get.getRoles()
+          Ok(
+            templates.html.base(
+              "pizza-auth-3",
+              templates.html.discordroles(roles),
+              req.getSession.map(_.toNormalSession),
+              req.getSession.flatMap(_.pilot))).attachSessionifDefined(
+            req.getSession.map(_.copy(alerts = List())))
+        case _ =>
+          NotFound()
+      }
+    }
+
     case req @ GET -> Root / "update" / username =>
       log.info(s"update route called for ${username}")
       req.getSession.flatMap(_.pilot) match {
@@ -841,22 +896,19 @@ class Webapp(fullconfig: ConfigFile,
           TemporaryRedirect(Uri(path = "/"))
       }
 
-    case req @ GET -> Root / "updateall" =>
-      log.info(s"update route called for all users")
+    case req @ GET -> Root / "discord" / "update" / username =>
+      log.info(s"discord update route called for ${username}")
       req.getSession.flatMap(_.pilot) match {
         case Some(p) =>
           p.getGroups contains "admin" match {
             case true =>
-              val updated = ud
-                .getAllUsers()
-                .filter(_.uid != "pingbot")
-                .map {
-                  update.updateUser
-                }
-                .filter { p =>
-                  ud.updateUser(p)
-                }
-              Ok(OM.writeValueAsString(updated))
+              ud.getUser(username) match {
+                case Some(u) =>
+                  discordBot.get.update(u)
+                  Ok()
+                case None =>
+                  NotFound()
+              }
             case false =>
               TemporaryRedirect(Uri(path = "/")).attachSessionifDefined(
                 req.flash(
@@ -870,16 +922,12 @@ class Webapp(fullconfig: ConfigFile,
     case req @ GET -> Root / "callback" => {
       val code = req.params("code")
       val state = req.params("state")
-      println(crest)
-      println(code)
       val callbacktask = crest.callback(code)
-      println(callbacktask)
       val callbackresults = callbacktask.unsafePerformSync
-      println(callbackresults)
       val verify = crest.verify(callbackresults.access_token).unsafePerformSync
       state match {
         case "signup" =>
-          log.info(s"signup route in callback for ${verify.CharacterName}")
+          log.debug(s"signup route in callback for ${verify.CharacterName}")
           val newSession = req.getSession.map(x =>
             x.copy(signupData =
               Some(new SignupData(verify, callbackresults.refresh_token.get))))
@@ -911,7 +959,7 @@ class Webapp(fullconfig: ConfigFile,
             case Some(p) =>
               req
                 .flash(Alerts.success,
-                       "Thanks for logging in %s".format(verify.characterName))
+                       "Thanks for logging in %s".format(verify.CharacterName))
                 .map(_.copy(pilot = Some(p), redirect=None))
             case None =>
               req.flash(
@@ -934,6 +982,29 @@ class Webapp(fullconfig: ConfigFile,
           TemporaryRedirect(Uri(path = "/"))
       }
     }
+  }
+
+  def adminRouter = HttpService {
+    case req @ GET -> Root / "updateall" =>
+      log.info(s"update route called for all users")
+      val updated = ud
+        .getAllUsers()
+        .filter(_.uid != "pingbot")
+        .map {
+          update.updateUser
+        }
+        .filter { p =>
+          ud.updateUser(p)
+        }
+      Ok(OM.writeValueAsString(updated))
+
+    case req @ GET -> Root / "discord" / "updateall" =>
+      val users = ud.getAllUsers()
+      val updated = users.flatMap((p) => {
+          discordBot.get.update(p)
+        })
+
+      Ok(OM.writeValueAsString(updated))
   }
 
   val secretKey = "SECRET IS GOING HERE"
