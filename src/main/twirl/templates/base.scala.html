@@ -35,12 +35,16 @@
                 @if(pilot.isDefined) {
                     <li><a href="/account">Account</a></li>
                     <li><a href="/groups">Groups</a></li>
-                }
-                @if(pilot.isDefined && pilot.get.getGroups.contains("admin")) {
-                    <li><a href="/groups/admin">Group Admin</a></li>
+					<li><a href="https://wiki.lumpy.eu/" target="_blank">Wiki</a></li>
+  					<li><a href="https://fits.lumpy.eu/" target="_blank">Doctrines</a></li>
+  					<li><a href="https://fits.lumpy.eu/srp" target="_blank">SRP</a></li>
                 }
                 @if(pilot.isDefined && pilot.get.getGroups.contains("ping")) {
-                    <li><a href="/ping">Ping</a></li>
+					<li><a href="/ping">Ping</a></li>
+					<li><a href="https://timers.lumpy.eu/admin" target="_blank">Timerboard</a></li>
+                }
+				 @if(pilot.isDefined && pilot.get.getGroups.contains("admin")) {
+                    <li><a href="/groups/admin">Group Admin</a></li>
                 }
             </ul>
 

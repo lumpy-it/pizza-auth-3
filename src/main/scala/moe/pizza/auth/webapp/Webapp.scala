@@ -147,7 +147,7 @@ class Webapp(fullconfig: ConfigFile,
                }
               Ok(
                 templates.html.base(
-                  "pizza-auth-3",
+                  "LUMPY Auth",
                   templates.html.main(
                     pilot,
                     discordId,
@@ -160,7 +160,7 @@ class Webapp(fullconfig: ConfigFile,
             case None =>
               Ok(
                 templates.html.base(
-                  "pizza-auth-3",
+                  "LUMPY Auth",
                   templates.html.landing(),
                   req.getSession.map(_.toNormalSession),
                   None
@@ -170,7 +170,7 @@ class Webapp(fullconfig: ConfigFile,
         case None =>
           InternalServerError(
             templates.html.base(
-              "pizza-auth-3",
+              "LUMPY Auth",
               Html("An error occurred with the session handler"),
               None,
               None))
@@ -256,7 +256,7 @@ class Webapp(fullconfig: ConfigFile,
                 }
               log.debug("trying to redirect back to signup confirm")
               Ok(
-                templates.html.base("pizza-auth-3",
+                templates.html.base("LUMPY Auth",
                                     templates.html.signup(gradedpilot2),
                                     req.getSession.map(_.toNormalSession),
                                     None))
@@ -369,7 +369,7 @@ class Webapp(fullconfig: ConfigFile,
           val groups = fullconfig.auth.groups
           Ok(
             templates.html.base(
-              "pizza-auth-3",
+              "LUMPY Auth",
               templates.html.groups(p, groups.closed),
               req.getSession.map(_.toNormalSession),
               req.getSession.flatMap(_.pilot))).attachSessionifDefined(
@@ -397,7 +397,7 @@ class Webapp(fullconfig: ConfigFile,
                 .toList
               // render it
               Ok(
-                templates.html.base("pizza-auth-3",
+                templates.html.base("LUMPY Auth",
                                     templates.html.groupadmin(applications),
                                     req.getSession.map(_.toNormalSession),
                                     req.getSession.flatMap(_.pilot)))
@@ -509,7 +509,7 @@ class Webapp(fullconfig: ConfigFile,
           p.getGroups contains "ping" match {
             case true =>
               Ok(
-                templates.html.base("pizza-auth-3",
+                templates.html.base("LUMPY Auth",
                                     templates.html.ping(),
                                     req.getSession.map(_.toNormalSession),
                                     req.getSession.flatMap(_.pilot)))
@@ -735,7 +735,7 @@ class Webapp(fullconfig: ConfigFile,
 
           Ok(
             templates.html.base(
-              "pizza-auth-3",
+              "LUMPY Auth",
               templates.html.account(p,validKeysWithoutMain, invalidKeys),
               req.getSession.map(_.toNormalSession),
               req.getSession.flatMap(_.pilot))).attachSessionifDefined(
@@ -801,7 +801,7 @@ class Webapp(fullconfig: ConfigFile,
               case None =>
                 InternalServerError(
                   templates.html.base(
-                    "pizza-auth-3",
+                    "LUMPY Auth",
                     Html("An error occurred with the session handler"),
                     None,
                     None))
@@ -809,7 +809,7 @@ class Webapp(fullconfig: ConfigFile,
           case None =>
             InternalServerError(
               templates.html.base(
-                "pizza-auth-3",
+                "LUMPY Auth",
                 Html("An error occurred with the session handler"),
                 None,
                 None))
@@ -862,7 +862,7 @@ class Webapp(fullconfig: ConfigFile,
           val roles = discordBot.get.getRoles()
           Ok(
             templates.html.base(
-              "pizza-auth-3",
+              "LUMPY Auth",
               templates.html.discordroles(roles),
               req.getSession.map(_.toNormalSession),
               req.getSession.flatMap(_.pilot))).attachSessionifDefined(
