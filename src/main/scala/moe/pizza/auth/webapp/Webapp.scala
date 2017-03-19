@@ -62,6 +62,7 @@ class Webapp(fullconfig: ConfigFile,
              apiClient: Option[Client] = None,
              mapper: Option[EveMapDb] = None,
              updater: Option[Update] = None,
+             connectedDiscordBot: Option[DiscordBot] = None,
              broadcasters: List[BroadcastService] =
                List.empty[BroadcastService]) {
 
@@ -91,15 +92,12 @@ class Webapp(fullconfig: ConfigFile,
 
   val update = updater.getOrElse(new Update(crest, eveapi, graders))
 
-  val discordBot = fullconfig.discord match {
-    case Some(dConfig) =>
-      val dbot = new DiscordBot(dConfig, ud)
-      dbot.connect()
-      Some(dbot)
-    case None => None
-    case _ => None
-  }
-
+  val discordBot = connectedDiscordBot.orElse(
+    fullconfig.discord match {
+      case Some(dConfig) => Some(new DiscordBot(dConfig, ud))
+      case None => None
+      case _ => None
+    })
 
   // used for serializing JSON responses, for now
   val OM = new ObjectMapper()

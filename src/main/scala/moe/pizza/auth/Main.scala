@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import moe.pizza.auth.adapters.{LdapUserDatabase, XmppBroadcastService}
+import moe.pizza.auth.bots.DiscordBot
 import moe.pizza.auth.ldap.client.LdapClient
 import moe.pizza.auth.ldap.server.EmbeddedLdapServer
 import moe.pizza.auth.webapp.Webapp
@@ -92,13 +93,24 @@ object Main {
                                       "uid=admin,ou=system",
                                       internalpassword)
 
+              val ud = new LdapUserDatabase(lc,
+                ldap.directoryService.getSchemaManager,
+                configfile.get.embeddedldap.basedn)
+
+              val discordBot = configfile.get.discord match {
+                case Some(dConfig) =>
+                  val dbot = new DiscordBot(dConfig, ud)
+                  dbot.connect()
+                  Some(dbot)
+                case None => None
+                case _ => None
+              }
+
               val webapp = new Webapp(
                 configfile.get,
                 graders,
                 9021,
-                new LdapUserDatabase(lc,
-                                     ldap.directoryService.getSchemaManager,
-                                     configfile.get.embeddedldap.basedn))
+                ud, connectedDiscordBot = discordBot)
               val builder = BlazeBuilder
                 .mountService(webapp.router)
                 .bindSocketAddress(new InetSocketAddress("127.0.0.1", 9021))
