@@ -508,7 +508,7 @@ class Webapp(fullconfig: ConfigFile,
             case true =>
               Ok(
                 templates.html.base("LUMPY Auth",
-                                    templates.html.ping(),
+                                    templates.html.ping(p),
                                     req.getSession.map(_.toNormalSession),
                                     req.getSession.flatMap(_.pilot)))
                 .attachSessionifDefined(
@@ -521,6 +521,45 @@ class Webapp(fullconfig: ConfigFile,
           }
         case None =>
           TemporaryRedirect(Uri(path = "/"))
+      }
+    }
+
+    case req @ POST -> Root / "ping" / "fleet" => {
+      req.getSession.map(_.updatePilot).flatMap(_.pilot) match {
+        case Some(p) =>
+          p.getGroups contains "ping" match {
+            case true =>
+              req.decode[UrlForm] { form =>
+                val fc = form.getFirstOrElse("fc","tba")
+                val staging = form.getFirstOrElse("staging", "Staging")
+                val formup = form.getFirstOrElse("formup","jetzt")
+                val departure = form.getFirstOrElse("departure","bald")
+                val shiptypes = form.getFirstOrElse("shiptypes","tba")
+                val message = form.getFirstOrElse("message","")
+                val pingtype = form.getFirstOrElse("type","Roaming")
+                val broadcast = form.getFirstOrElse("broadcast","@everyone")
+
+                val result = discordBot.get.sendFleetAnnouncement(
+                  p.uid, fc,staging,formup,departure,
+                  shiptypes,message,pingtype,broadcast
+                )
+                result match {
+                  case true =>
+                    SeeOther(Uri(path = "/ping")).attachSessionifDefined(
+                      req.flash(Alerts.info, s"Ping sent."))
+                  case false =>
+                    SeeOther(Uri(path = "/ping")).attachSessionifDefined(
+                      req.flash(Alerts.danger, s"Error sending ping"))
+                }
+              }
+            case false =>
+              SeeOther(Uri(path = "/")).attachSessionifDefined(
+                req.flash(
+                  Alerts.warning,
+                  "You must be in the ping group to access that resource"))
+          }
+        case None =>
+          SeeOther(Uri(path = "/"))
       }
     }
 

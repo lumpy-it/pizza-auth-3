@@ -17,6 +17,7 @@ import org.apache.directory.api.ldap.model.name.Dn
 import org.apache.directory.api.ldap.model.schema.{SchemaManager, SchemaObject}
 import org.apache.directory.api.ldap.model.schema.parsers.OpenLdapSchemaParser
 import org.apache.directory.api.ldap.schema.extractor.impl.DefaultSchemaLdifExtractor
+import org.apache.directory.server.core.DefaultDirectoryService
 import org.apache.directory.server.core.api.entry.ClonedServerEntry
 import org.apache.directory.server.core.api.interceptor.context.{
   HasEntryOperationContext,

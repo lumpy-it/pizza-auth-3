@@ -1,5 +1,6 @@
 package moe.pizza.auth.bots
 
+import java.awt.Color
 import java.util.concurrent.TimeUnit
 
 import com.fasterxml.jackson.databind.JsonNode
@@ -21,8 +22,8 @@ import org.log4s.getLogger
 import sx.blah.discord.api.{ClientBuilder, IDiscordClient}
 import sx.blah.discord.api.events.{Event, IListener}
 import sx.blah.discord.handle.impl.events.ReadyEvent
-import sx.blah.discord.handle.obj.{IGuild, IRole, IUser}
-import sx.blah.discord.util.RequestBuffer
+import sx.blah.discord.handle.obj.{IChannel, IGuild, IRole, IUser}
+import sx.blah.discord.util.{EmbedBuilder, RequestBuffer}
 import sx.blah.discord.util.RequestBuffer.{IRequest, IVoidRequest}
 
 import scalaz.concurrent.Task
@@ -112,6 +113,8 @@ class DiscordBot(config: DiscordConfig,
   var guild : Option[IGuild] = None
   var roleLookup : Map[String, IRole] = Map()
 
+  var channel: Option[IChannel] = None
+
   private[this] val log = getLogger
 
   def connect(): Unit = {
@@ -124,7 +127,9 @@ class DiscordBot(config: DiscordConfig,
       case e: ReadyEvent =>
         guild = Some(discordClient.getGuildByID(config.guildId))
         log.info("DiscordBot: Saved Discord Guild Handle")
-
+        channel = Some(guild.get.getChannelByID(config.channelId))
+        log.info("DiscordBot: Saved Channel handle")
+        log.info(channel.toString)
         roleLookup = createRoleLookup()
       case _ =>
     }
@@ -260,5 +265,56 @@ class DiscordBot(config: DiscordConfig,
         log.error("rip")
         None
     }
+  }
+
+  def sendFleetAnnouncement(sender: String, fc: String, staging: String,
+                            formup: String, departure: String,
+                            shiptypes: String, message: String,
+                            pingtype: String, broadcast: String): Boolean = {
+    channel match {
+      case Some(c) =>
+        val color = pingtype match {
+          case "Homedef" => new Color(0,200,0)
+          case "Roaming" => new Color(0,0,255)
+          case "Roaming Planung" => new Color(50,50,255)
+          case "Stratop" => new Color(255, 127, 0)
+          case "Stratop Planung" => new Color(255, 180, 50)
+          case "CTA" => new Color(255,0,0)
+          case "CTA Planung" => new Color(255,50,50)
+          case _ => new Color(255,255,255)
+        }
+
+        val eb = new EmbedBuilder()
+        eb.withColor(color).withTitle(pingtype).withDesc(message)
+        eb.appendField("FC",fc,true).appendField("Shiptypes",shiptypes,true)
+        eb.appendField("Staging",staging,true)
+        eb.appendField("Formup / Abflug", formup + " / " + departure,true)
+
+        val e = eb.build()
+
+	val ping = broadcast match {
+          case "" => ""
+          case s => "@" + s
+          case _ => ""
+        }
+
+        val m = c.sendMessage(s"fleet ping by $sender $ping",e,false)
+        if (pingtype.endsWith(" Planung")) {
+          RequestBuffer.request(new IVoidRequest {
+            override def doRequest() = m.addReaction("✅")
+          })
+          RequestBuffer.request(new IVoidRequest {
+            override def doRequest() = m.addReaction("❓")
+          })
+          RequestBuffer.request(new IVoidRequest {
+            override def doRequest() = m.addReaction("❌")
+          })
+        }
+
+        true
+      case None =>
+        false
+    }
+
   }
 }

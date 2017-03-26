@@ -54,6 +54,7 @@ object ConfigFile {
           redirectUrl: String,
           botToken: String,
           guildId: String,
+          channelId: String,
           roles: Map[String, String] = Map()
   )
   case class ConfigFile(

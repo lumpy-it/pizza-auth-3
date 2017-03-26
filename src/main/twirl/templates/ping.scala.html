@@ -1,38 +1,52 @@
+@(pilot: moe.pizza.auth.models.Pilot)
+@import moe.pizza.auth.models.Pilot
 <div class="row">
-        <div class="col-md-4">
-                <div class="panel panel-primary">
-                <div class="panel-heading"><h3 class="panel-title">Announcment Ping</h3></div>
-                <form role="form" class="panel-body form-inline span8 offset2 custom-form" name="ping" action="/ping/global" method="post">
-                        <div class="form-group" style="width:100%;">
-                                <label for="message">Message</label><br /><textarea class="form-control" rows=6 style="width:100%" type="text" name="message"></textarea>
-                                <div class="checkbox">
-                                        <label>
-                                                <input type="checkbox" name="internal" checked>Internal
-                                                <input type="checkbox" name="ally" checked>Ally
-                                        </label>
-                                </div>
-                                <div class="controls">
-                                        <button type="submit" class="btn btn-primary" value="submit" >Submit</button>
-                                </div>
-                        </div>
-                </form>
+    <div class="col-md-4">
+        <div class="panel panel-primary">
+            <div class="panel-heading"><h3 class="panel-title">Fleet Ping</h3></div>
+            <form role="form" class="panel-body form-inline span8 offset2 custom-form" name="ping" action="/ping/fleet"
+                  method="post">
+                <div class="form-group" style="width:100%;">
+                    <label for="fc">FC</label><br/><input class="form-control" style="width: 100%" type="text" name="fc"
+                                                          value="@pilot.characterName"/></br>
+                    <label for="staging">Staging</label><br/><input class="form-control" style="width: 100%" type="text"
+                                                                    name="staging" value="S-K"/></br>
+                    <label for="formup">Formup</label><br/><input class="form-control" style="width: 100%" type="text"
+                                                                  name="formup" value="jetzt"/></br>
+                    <label for="departure">Departure</label><br/><input class="form-control" style="width: 100%"
+                                                                        type="text" name="departure" value="bald"/></br>
+                    <label for="shiptypes">Shiptypes</label><br/><input class="form-control" style="width: 100%"
+                                                                        type="text" name="shiptypes"
+                                                                        placeholder="Gilas, Bacon, Mosquito, ..."/></br>
+                    <label for="message">Message</label><br/><textarea class="form-control" rows=6 style="width:100%"
+                                                                       type="text" name="message"
+                                                                       placeholder="Easy kills from noob"></textarea>
+
+                    <label for="type">Type</label><br/>
+                    <select class="form-control" style="width: 100%" name="type"></br>
+                        <option value="Homedef">Homedef</option>
+                        <option value="Roaming">Roaming</option>
+                        <option value="Roaming Planung">Roaming Planung</option>
+                        <option value="Stratop">Stratop heute</option>
+                        <option value="Stratop Planung">Stratop Planung</option>
+                        <option value="CTA">CTA</option>
+                        <option value="CTA Planung">CTA Planung</option>
+                    </select>
+                    <br/>
+                    <label for="broadcast">Broadcast</label><br/>
+                    <select class="form-control" style="width: 100%" name="broadcast"></br>
+                        <option value="everyone">@@everyone</option>
+                        <option value="here">@@here</option>
+                        <option value="">ohne</option>
+                    </select>
+                    <div class="controls">
+                        <button type="submit" class="btn btn-primary" value="submit"/>
+                        Submit</button>
+                    </div>
                 </div>
+            </form>
         </div>
-        <div class="col-md-4">
-                <div class="panel panel-primary">
-                <div class="panel-heading"><h3 class="panel-title">Channel Ping</h3></div>
-                <form role="form" class="panel-body form-inline span8 offset2 custom-form" name="ping" action="/ping/group" method="post">
-                        <div class="form-group" style="width:100%;">
-                                <label for="message">Message</label><br /><textarea class="form-control" rows=6 style="width:100%" type="text" name="message"></textarea>
-                                <label for="group">Channel</label><br />
-                                <input type="text" class="form-control" id="group" name="group" placeholder="Group, Corporation or Alliance" autocomplete="off">
-                                <div class="controls">
-                                        <button type="submit" class="btn btn-primary" value="submit" >Submit</button>
-                                </div>
-                        </div>
-                </form>
-                </div>
-        </div>
+    </div>
 </div>
 
 <script>
