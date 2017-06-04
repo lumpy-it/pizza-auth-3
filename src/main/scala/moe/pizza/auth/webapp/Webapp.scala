@@ -1060,8 +1060,9 @@ class Webapp(fullconfig: ConfigFile,
 
   val oauthServer = new OAuthResource(portnumber, ud, fullconfig.auth.applications)
 
+  val needsSession = dynamicWebRouter orElse oauthServer.resource
+
   def router =
-    staticrouter orElse sessions(dynamicWebRouter) orElse sessions(oauthServer.resource) //orElse restMiddleware(
-      //restapi.resource)
+    staticrouter orElse sessions(needsSession) orElse restMiddleware(restapi.resource)
 
 }
