@@ -38,7 +38,12 @@ case class OAuthStoredToken(access_token: String,
                             uid: String)
 
 case class VerifyResponse(uid: String,
-                          authGroups: List[String])
+						  characterName: String,
+						  corporation: String,
+						  alliance: String,
+						  accountStatus: String,
+                          authGroups: List[String],
+						  crestToken: List[String])
 
 case class OAuthError(error: String, description: String)
 
@@ -231,7 +236,7 @@ class OAuthResource(portnumber: Int = 9021,
             case Some(storedToken) =>
               ud.getUser(storedToken.uid) match {
                 case Some(p) =>
-                  Ok(VerifyResponse(p.uid,p.authGroups).asJson)
+                  Ok(VerifyResponse(p.uid,p.characterName, p.corporation, p.alliance, p.accountStatus.toString, p.authGroups, p.crestTokens).asJson)
                 case None =>
                   BadRequest("User associated with token not found")
               }
