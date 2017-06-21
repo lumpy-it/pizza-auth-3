@@ -6,13 +6,17 @@ import moe.pizza.crestapi.CrestApi
 import moe.pizza.eveapi._
 import org.http4s.client.Client
 
+import org.log4s.getLogger
 import scala.util.Try
 
 class Update(crest: CrestApi, eveapi: EVEAPI, chain: PilotGrader)(
     implicit val client: Client) {
 
+  private[this] val log = getLogger
+
   def updateUser(p: Pilot): Pilot = {
     val keys = p.getCrestTokens
+    log.debug(s" updating $p.uid")
     val mainkey = keys.head
     Try {
       val charinfo = eveapi.eve.CharacterInfo(mainkey.characterID).unsafePerformSync
