@@ -1019,6 +1019,16 @@ class Webapp(fullconfig: ConfigFile,
           TemporaryRedirect(Uri(path = "/"))
       }
     }
+
+    case req @ GET -> root / "auth" => {
+      req.getSession.map(_.updatePilot).flatMap(_.pilot) match {
+        case Some(p) if p.accountStatus == Pilot.Status.internal =>
+          Ok().attachSessionifDefined(
+            req.getSession.map(_.copy(alerts = List())))
+        case _ =>
+          Forbidden("Only for internal members")
+      }
+    }
   }
 
   def adminRouter = HttpService {
