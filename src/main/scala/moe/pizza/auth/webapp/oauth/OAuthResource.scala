@@ -38,7 +38,12 @@ case class OAuthStoredToken(access_token: String,
                             uid: String)
 
 case class VerifyResponse(uid: String,
-                          authGroups: List[String])
+						  characterName: String,
+						  corporation: String,
+						  alliance: String,
+						  accountStatus: String,
+                          authGroups: List[String],
+						  crestToken: List[String])
 
 case class OAuthError(error: String, description: String)
 
@@ -79,7 +84,7 @@ class OAuthResource(portnumber: Int = 9021,
 
     case req @ GET -> Root / "oauth" / "authorize" => {
       (req.params("client_id"), req.params("response_type"),
-        req.params("redirect_uri"), req.params("state")) match {
+        req.params("redirect_uri"), req.params.getOrElse("state","")) match {
         // wrong client ID
         case (clientId, _,_,_) if !(applicationMap isDefinedAt clientId) =>
           BadRequest(OAuthError("unauthorized_client","Invalid ClientID").asJson)
@@ -167,10 +172,12 @@ class OAuthResource(portnumber: Int = 9021,
             (clientId, clientSecret, grantType, code) match {
               // check if clientID belongs to a registered application
             case (clientId, _, _, _) if !(applicationMap isDefinedAt clientId) =>
+            log.debug("invalid client")
             BadRequest(OAuthError("invalid_client", "Invalid ClientID").asJson)
 
               // check if grantType is authorization_code
             case (_, _, grantType, _) if grantType != "authorization_code" =>
+            log.debug("unsupp")
             BadRequest(OAuthError("unsupported_grant_type",
             "Unsupported Grant Type").asJson)
 
@@ -197,20 +204,25 @@ class OAuthResource(portnumber: Int = 9021,
             authenticationCodes -= c.code
 
               // return access token as json
+            log.debug(token.toString)
             Ok(token.asJson)
             case _ =>
+            log.debug("invalid_grant1")
             BadRequest(OAuthError("invalid_grant",
             "Invalid Token").asJson)
             }
             case None =>
+            log.debug("invalid_grant2")
             BadRequest(OAuthError("invalid_grant",
             "Invalid Token").asJson)
             }
             case (_, _, _, _) =>
+            log.debug("invalid_grant3")
             BadRequest(OAuthError("invalid_client",
             "Invalid Client").asJson)
             }
           case None =>
+            log.debug("please supply auth")
             BadRequest("Please supply authorization")
         }
       }
@@ -224,7 +236,7 @@ class OAuthResource(portnumber: Int = 9021,
             case Some(storedToken) =>
               ud.getUser(storedToken.uid) match {
                 case Some(p) =>
-                  Ok(VerifyResponse(p.uid,p.authGroups).asJson)
+                  Ok(VerifyResponse(p.uid,p.characterName, p.corporation, p.alliance, p.accountStatus.toString, p.authGroups, p.crestTokens).asJson)
                 case None =>
                   BadRequest("User associated with token not found")
               }
