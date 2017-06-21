@@ -2,50 +2,7 @@
 @import moe.pizza.auth.models.Pilot
 @import moe.pizza.crestapi.CrestApi
 
-<div class="row well form-inline custom-form">
-    <h3>Discord</h3>
-    @if(discordId.isDefined) {
-        <table class="table">
-            <tr>
-                <td>DiscordID</td>
-                <td>@{discordId.get}</td>
-            </tr>
-        </table>
-    } else {
-        <a href="@(discordUrl)">Click here to join the discord server</a>
-    }
-</div>
-<div class="row well form-inline custom-form">
-    <h3>Mumble</h3>
-        <table class="table">
-            <tr>
-                <td>Zugangsdaten</td>
-                <td>
-					<table style="height: 100px;" width="300">
-					<tbody>
-						<tr>
-							<td>Bezeichner:</td>
-							<td>LUMPY</td>
-						</tr>
-						<tr>
-							<td>Adresse:</td>
-							<td>lumpy.eu</td>
-						</tr>
-						<tr>
-							<td>Port:</td>
-							<td>64738</td>
-						</tr>
-						<tr>
-							<td>Benutzername:</td>
-							<td>@pilot.uid</td>
-						</tr>
-						<tr>
-							<td>Passwort:</td>
-							<td><em>auth pw</em></td>
-						</tr>
-					</tbody>
-					</table>
-				</td>
-            </tr>
-        </table>
+<div class="panel-primary">
+    <div class="panel-heading"><h3 class="panel-title">Fleets</h3></div>
+    <iframe src="https://teamup.com/ksu9qu3s1sp48p33pt?view=l&amp;sidepanel=c&amp;showTitle=0&amp;showLogo=0" frameborder="0" width="100%" height="600"></iframe>
 </div>

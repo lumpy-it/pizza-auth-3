@@ -139,10 +139,10 @@ class Webapp(fullconfig: ConfigFile,
         case Some(s) =>
           s.pilot match {
             case Some(pilot) =>
-              val discordId = pilot.metadata.get("discordId") match {
-                case null => None
-                case s => Some(s.asText)
-               }
+          val discordId = pilot.metadata.get("discordId") match {
+            case null => None
+            case s => Some(s.asText)
+          }
               Ok(
                 templates.html.base(
                   "LUMPY Auth",
@@ -770,10 +770,19 @@ class Webapp(fullconfig: ConfigFile,
 
           val validKeysWithoutMain = validKeys.filter(x => x._2.get.CharacterName != p.characterName)
 
+          val discordId = p.metadata.get("discordId") match {
+            case null => None
+            case s => Some(s.asText)
+          }
           Ok(
             templates.html.base(
               "LUMPY Auth",
-              templates.html.account(p,validKeysWithoutMain, invalidKeys),
+              templates.html.account(
+                p,
+                validKeysWithoutMain,
+                invalidKeys,
+                discordId,
+                discordBot.get.getAuthorizationUrl().toString()),
               req.getSession.map(_.toNormalSession),
               req.getSession.flatMap(_.pilot))).attachSessionifDefined(
             req.getSession.map(_.copy(alerts = List())))

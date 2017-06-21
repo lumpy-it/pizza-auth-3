@@ -2,8 +2,9 @@
 @import moe.pizza.crestapi.CrestApi
 @(pilot: Pilot,
     validKeys: List[(Pilot.CrestToken,Option[CrestApi.VerifyResponse])],
-    invalidKeys: List[(Pilot.CrestToken,Option[CrestApi.VerifyResponse])])
-
+    invalidKeys: List[(Pilot.CrestToken,Option[CrestApi.VerifyResponse])],
+	discordId: Option[String], discordUrl: String)
+	
 <h2>Account Management</h2>
 
 <div class="row">
@@ -107,9 +108,7 @@
 
             </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="panel panel-primary">
+		 <div class="panel panel-primary">
             <div class="panel-heading"><h3 class="panel-title">Email</h3></div>
             <div class="panel-body">
                 <form role="form" id="update_email" action="/account/update/email" method="post">
@@ -130,6 +129,61 @@
                         }
                     });
                 </script>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+       <div class="panel panel-primary">
+            <div class="panel-heading"><h3 class="panel-title">Mumble</h3></div>
+            <div class="panel-body">
+              <table class="table">
+            <tr>
+               
+                <td>
+					<table style="height: 100px;" width="300">
+					<tbody>
+						<tr>
+							<td>Bezeichner:</td>
+							<td>LUMPY</td>
+						</tr>
+						<tr>
+							<td>Adresse:</td>
+							<td>lumpy.eu</td>
+						</tr>
+						<tr>
+							<td>Port:</td>
+							<td>64738</td>
+						</tr>
+						<tr>
+							<td>Benutzername:</td>
+							<td>@pilot.uid</td>
+						</tr>
+						<tr>
+							<td>Passwort:</td>
+							<td><em>auth pw</em></td>
+						</tr>
+					</tbody>
+					</table>
+				</td>
+            </tr>
+        </table>   
+				
+            </div>
+        </div>
+		<div class="panel panel-primary">
+            <div class="panel-heading"><h3 class="panel-title">Discord</h3></div>
+            <div class="panel-body">
+    @if(discordId.isDefined) {
+        <table class="table">
+            <tr>
+                <td>DiscordID</td>
+                <td>@{discordId.get}</td>
+            </tr>
+        </table>
+    } else {
+        <a href="@(discordUrl)">Join discord server</a>
+    }   
+			   
             </div>
         </div>
     </div>
