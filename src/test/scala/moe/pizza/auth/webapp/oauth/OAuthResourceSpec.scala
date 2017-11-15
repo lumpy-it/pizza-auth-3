@@ -196,15 +196,15 @@ class OAuthResourceSpec extends FlatSpec with MockitoSugar with MustMatchers {
     val resource = new OAuthResource(9021, ud, applications)
 
     val bob = new Pilot("bob",
-      null,
-      null,
-      null,
-      null,
-      null,
+      Pilot.Status.internal,
+      "Alliance",
+      "Corp",
+      "Bob BobFace",
+      "bob@bob.bob",
       null,
       List("ping"),
-      null,
-      null)
+      List("token:token"),
+      List("apikey"))
 
     when(ud.getUser("bob")).thenReturn(Some(bob))
 
