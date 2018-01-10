@@ -125,9 +125,9 @@ class DiscordBot(config: DiscordConfig,
   override def handle(t: Event): Unit = {
     t match {
       case e: ReadyEvent =>
-        guild = Some(discordClient.getGuildByID(config.guildId))
+        guild = Some(discordClient.getGuildByID(config.guildId.toLong))
         log.info("DiscordBot: Saved Discord Guild Handle")
-        channel = Some(guild.get.getChannelByID(config.channelId))
+        channel = Some(guild.get.getChannelByID(config.channelId.toLong))
         log.info("DiscordBot: Saved Channel handle")
         log.info(channel.toString)
         roleLookup = createRoleLookup()
@@ -137,13 +137,13 @@ class DiscordBot(config: DiscordConfig,
 
   def createRoleLookup(): Map[String, IRole] = {
     val roles = guild.get.getRoles.asScala.toList
-    config.roles.map((x) => (x._1 -> roles.find(_.getID == x._2).get))
+    config.roles.map((x) => (x._1 -> roles.find(_.getStringID() == x._2).get))
   }
 
   def getRoles(): List[(String, String)] = {
     guild match {
       case Some(g) =>
-        g.getRoles().asScala.toList.map((role) => (role.getName(), role.getID()))
+        g.getRoles().asScala.toList.map((role) => (role.getName(), role.getStringID()))
       case None =>
         List()
     }
@@ -190,9 +190,9 @@ class DiscordBot(config: DiscordConfig,
     }
   }
 
-  def getDiscordId(p: Pilot): Option[String] = {
+  def getDiscordId(p: Pilot): Option[Long] = {
     p.metadata.has("discordId") match {
-      case true => Some(p.metadata.get("discordId").asText())
+      case true => Some(p.metadata.get("discordId").asText().toLong)
       case false => None
     }
   }
@@ -205,7 +205,7 @@ class DiscordBot(config: DiscordConfig,
       .flatMap((userid) => saveDiscordId(userid, p))
   }
 
-  def getUserById(id: String): Option[IUser] = {
+  def getUserById(id: Long): Option[IUser] = {
     guild.get.getUserByID(id) match {
       case null => None
       case user => Some(user)
