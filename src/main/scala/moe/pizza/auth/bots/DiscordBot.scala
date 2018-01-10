@@ -299,17 +299,6 @@ class DiscordBot(config: DiscordConfig,
         }
 
         val m = c.sendMessage(s"fleet ping by $sender $ping",e,false)
-        if (pingtype.endsWith(" Planung")) {
-          RequestBuffer.request(new IVoidRequest {
-            override def doRequest() = m.addReaction("✅")
-          })
-          RequestBuffer.request(new IVoidRequest {
-            override def doRequest() = m.addReaction("❓")
-          })
-          RequestBuffer.request(new IVoidRequest {
-            override def doRequest() = m.addReaction("❌")
-          })
-        }
 
         true
       case None =>
