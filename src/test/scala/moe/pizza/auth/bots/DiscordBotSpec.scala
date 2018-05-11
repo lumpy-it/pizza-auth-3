@@ -159,7 +159,7 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
 
     val guild = mock[IGuild]
     val role = mock[IRole]
-    when(role.getID()).thenReturn("12345")
+    when(role.getStringID()).thenReturn("12345")
     when(role.getName()).thenReturn("testRole")
 
     discordBot.guild = Some(guild)
@@ -183,7 +183,7 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
 
     val guild = mock[IGuild]
     val role = mock[IRole]
-    when(role.getID()).thenReturn("12345")
+    when(role.getStringID()).thenReturn("12345")
     when(role.getName()).thenReturn("testRole")
 
     discordBot.guild = Some(guild)
@@ -212,12 +212,12 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val user = mock[IUser]
     val guild = mock[IGuild]
 
-    when(role.getID()).thenReturn("12345")
+    when(role.getStringID()).thenReturn("12345")
     when(role.getName()).thenReturn("testRole")
 
     when(user.getRolesForGuild(guild)).thenReturn(List[IRole]().asJava)
 
-    when(guild.getUserByID("12345")).thenReturn(user)
+    when(guild.getUserByID(12345)).thenReturn(user)
     when(guild.getRoles()).thenReturn(List(role).asJava)
 
     discordBot.guild = Some(guild)
@@ -228,7 +228,7 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     verify(user, never()).removeRole(role)
 
     val user2 = mock[IUser]
-    when(guild.getUserByID("12345")).thenReturn(user2)
+    when(guild.getUserByID(12345)).thenReturn(user2)
     when(user2.getRolesForGuild(guild)).thenReturn(List(role).asJava)
     discordBot.update(p)
     verify(user2, never()).addRole(role)
@@ -236,7 +236,7 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
 
     val p2 = p.copy(authGroups = List())
     val user3 = mock[IUser]
-    when(guild.getUserByID("12345")).thenReturn(user3)
+    when(guild.getUserByID(12345)).thenReturn(user3)
     when(user3.getRolesForGuild(guild)).thenReturn(List(role).asJava)
     discordBot.update(p2)
     verify(user3, never()).addRole(role)
@@ -247,7 +247,7 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
     val user5 = mock[IUser]
     when(discordConfig.roles).thenReturn(Map("Know Your Role" -> "12345"))
     discordBot.roleLookup = discordBot.createRoleLookup()
-    when(guild.getUserByID("12345")).thenReturn(user5)
+    when(guild.getUserByID(12345)).thenReturn(user5)
     when(user5.getRolesForGuild(guild)).thenReturn(List[IRole]().asJava)
     discordBot.update(p4)
     verify(user5).addRole(role)
@@ -257,7 +257,7 @@ class DiscordBotSpec extends FlatSpec with MustMatchers with MockitoSugar {
 
     val p3 = p.copy(accountStatus = Pilot.Status.ineligible)
     val user4 = mock[IUser]
-    when(guild.getUserByID("12345")).thenReturn(user4)
+    when(guild.getUserByID(12345)).thenReturn(user4)
     when(user4.getRolesForGuild(guild)).thenReturn(List(role).asJava)
     discordBot.update(p3)
     verify(guild).kickUser(user4)

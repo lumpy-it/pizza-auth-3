@@ -32,16 +32,9 @@ import org.http4s.circe._
 import io.circe.Json
 import io.circe.generic.JsonCodec
 
-class RestResource(fullconfig: ConfigFile,
-                   graders: PilotGrader,
-                   portnumber: Int = 9021,
-                   ud: UserDatabase,
-                   crestapi: Option[CrestApi] = None,
-                   eve: Option[EVEAPI] = None,
-                   mapper: Option[EveMapDb] = None,
-                   updater: Option[Update] = None,
-                   broadcasters: List[BroadcastService] =
-                     List.empty[BroadcastService]) {
+class RestResource(ud: UserDatabase,
+                    broadcasters: List[BroadcastService] =
+                    List.empty[BroadcastService]) {
 
   case class ApiError(`type`: String, message: String)
 

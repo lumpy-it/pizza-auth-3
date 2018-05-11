@@ -6,6 +6,7 @@ import moe.pizza.auth.config.ConfigFile.ConfigFile
 import moe.pizza.auth.graphdb.EveMapDb
 import moe.pizza.auth.interfaces.{BroadcastService, PilotGrader, UserDatabase}
 import BroadcastService._
+import moe.pizza.auth.adapters.EsiApi
 import moe.pizza.auth.models.Pilot
 import moe.pizza.auth.plugins.LocationManager
 import moe.pizza.auth.tasks.Update
@@ -58,7 +59,7 @@ class Webapp(fullconfig: ConfigFile,
              portnumber: Int = 9021,
              ud: UserDatabase,
              crestapi: Option[CrestApi] = None,
-             eve: Option[EVEAPI] = None,
+             eve: Option[EsiApi] = None,
              apiClient: Option[Client] = None,
              mapper: Option[EveMapDb] = None,
              updater: Option[Update] = None,
@@ -81,7 +82,7 @@ class Webapp(fullconfig: ConfigFile,
                  config.clientID,
                  config.secretKey,
                  config.redirectUrl))
-  val eveapi = eve.getOrElse(new EVEAPI(client))
+  val esi = eve.getOrElse(new EsiApi())
   val map = mapper.getOrElse {
     // make the graph database in the webapp for the MVP version
     val map = new EveMapDb("internal-map")
@@ -90,7 +91,7 @@ class Webapp(fullconfig: ConfigFile,
     map
   }
 
-  val update = updater.getOrElse(new Update(crest, eveapi, graders))
+  val update = updater.getOrElse(new Update(crest, esi, graders))
 
   val discordBot = connectedDiscordBot.orElse(
     fullconfig.discord match {
@@ -197,41 +198,22 @@ class Webapp(fullconfig: ConfigFile,
         .flatMap(_.signupData)
         .map { signup =>
           val charinfo =
-            eveapi.eve.CharacterInfo(signup.verify.CharacterID.toInt)
+            esi.characterInfo(signup.verify.CharacterID.toInt)
           val pilot = charinfo.map { ci =>
             val refresh = crest.refresh(signup.refresh).unsafePerformSync
-            ci match {
-              case Right(r) =>
-                // has an alliance
-                new Pilot(
-                  Utils.sanitizeUserName(r.result.characterName),
-                  Pilot.Status.unclassified,
-                  r.result.alliance,
-                  r.result.corporation,
-                  r.result.characterName,
-                  "none@none",
-                  Pilot.OM.createObjectNode(),
-                  List.empty[String],
-                  List("%d:%s".format(r.result.characterID,
-                                      refresh.refresh_token.get)),
-                  List.empty[String]
-                )
-              case Left(l) =>
-                // does not have an alliance
-                new Pilot(
-                  Utils.sanitizeUserName(l.result.characterName),
-                  Pilot.Status.unclassified,
-                  "",
-                  l.result.corporation,
-                  l.result.characterName,
-                  "none@none",
-                  Pilot.OM.createObjectNode(),
-                  List.empty[String],
-                  List("%d:%s".format(l.result.characterID,
-                                      refresh.refresh_token.get)),
-                  List.empty[String]
-                )
-            }
+            new Pilot(
+              Utils.sanitizeUserName(ci.character),
+              Pilot.Status.unclassified,
+              ci.alliance.getOrElse(""),
+              ci.corporation,
+              ci.character,
+              "none@none",
+              Pilot.OM.createObjectNode(),
+              List.empty[String],
+              List("%d:%s".format(signup.verify.CharacterID.toInt,
+                                  refresh.refresh_token.get)),
+              List.empty[String]
+            )
           }
           Try {
             pilot.unsafePerformSync
@@ -276,42 +258,22 @@ class Webapp(fullconfig: ConfigFile,
       req.getSession
         .flatMap(_.signupData)
         .map { signup =>
-          val charinfo =
-            eveapi.eve.CharacterInfo(signup.verify.CharacterID.toInt)
+          val charinfo = esi.characterInfo(signup.verify.CharacterID.toInt)
           val pilot = charinfo.map { ci =>
             val refresh = crest.refresh(signup.refresh).unsafePerformSync
-            ci match {
-              case Right(r) =>
-                // has an alliance
-                new Pilot(
-                  Utils.sanitizeUserName(r.result.characterName),
-                  Pilot.Status.unclassified,
-                  r.result.alliance,
-                  r.result.corporation,
-                  r.result.characterName,
-                  "none@none",
-                  Pilot.OM.createObjectNode(),
-                  List.empty[String],
-                  List("%d:%s".format(r.result.characterID,
-                                      refresh.refresh_token.get)),
-                  List.empty[String]
-                )
-              case Left(l) =>
-                // does not have an alliance
-                new Pilot(
-                  Utils.sanitizeUserName(l.result.characterName),
-                  Pilot.Status.unclassified,
-                  "",
-                  l.result.corporation,
-                  l.result.characterName,
-                  "none@none",
-                  Pilot.OM.createObjectNode(),
-                  List.empty[String],
-                  List("%d:%s".format(l.result.characterID,
-                                      refresh.refresh_token.get)),
-                  List.empty[String]
-                )
-            }
+            new Pilot(
+              Utils.sanitizeUserName(ci.character),
+              Pilot.Status.unclassified,
+              ci.alliance.getOrElse(""),
+              ci.corporation,
+              ci.character,
+              "none@none",
+              Pilot.OM.createObjectNode(),
+              List.empty[String],
+              List("%d:%s".format(signup.verify.CharacterID.toInt,
+                                  refresh.refresh_token.get)),
+              List.empty[String]
+            )
           }
           Try {
             pilot.unsafePerformSync
@@ -1066,15 +1028,7 @@ class Webapp(fullconfig: ConfigFile,
   val secretKey = "SECRET IS GOING HERE"
   //UUID.randomUUID().toString
   val sessions = new SessionManager(secretKey, ud)
-  val restapi = new RestResource(fullconfig,
-                                 graders,
-                                 portnumber,
-                                 ud,
-                                 crestapi,
-                                 eve,
-                                 mapper,
-                                 updater,
-                                 broadcasters)
+  val restapi = new RestResource(ud, broadcasters)
   val restMiddleware = new RestKeyMiddleware(fullconfig.auth.restkeys)
 
   val oauthServer = new OAuthResource(portnumber, ud, fullconfig.auth.applications)
